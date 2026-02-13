@@ -1,1046 +1,480 @@
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 import os
 import shutil
-from pathlib import Path
-from PIL import Image, ImageTk
-import tkinter as tk
-from tkinter import filedialog, messagebox
-import customtkinter as ctk
-import json
-from datetime import datetime
+from PIL import Image
 
-# Konfigurasi tema CustomTkinter
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")  # Perbaikan: set_default_color_intersection -> set_default_color_theme
+# --- Konfigurasi Modern (Palette Slate & Blue) ---
+ctk.set_appearance_mode("Light") 
+ctk.set_default_color_theme("dark-blue") 
 
-class ModernImageSorter:
+# Palette Warna Professional
+COLOR_BG = "#F1F5F9"        # Background abu-abu muda (Slate 100)
+COLOR_SURFACE = "#FFFFFF"   # Putih bersih untuk kartu
+COLOR_PRIMARY = "#0F172A"   # Navy Gelap (Slate 900)
+COLOR_ACCENT = "#3B82F6"    # Biru Cerah (Blue 500)
+COLOR_TEXT = "#334155"      # Teks abu tua (Slate 700)
+COLOR_BORDER = "#E2E8F0"    # Garis halus
+
+class SortirFotoApp(ctk.CTk):
     def __init__(self):
-        self.window = ctk.CTk()
-        self.window.title("Image Sorter Professional")
-        self.window.geometry("1400x800")
-        
-        # Variabel
+        super().__init__()
+
+        self.title("SortirPro - Smart Photo Organizer")
+        self.geometry("1100x800")
+        self.configure(fg_color=COLOR_BG) # Background aplikasi
+
+        # Variabel Data
         self.source_folder = ""
-        self.destination_folders = []
         self.image_files = []
-        self.current_index = 0
-        self.folder_count = 4
-        self.button_functions = []
-        self.keyboard_shortcuts = {}
-        self.sorting_history = []
-        self.sorted_count = 0
+        self.current_image_index = 0
         
-        # Warna tema
-        self.colors = {
-            'navy': "#1a2b4c",
-            'navy_light': "#2c3e6e",
-            'white': "#ffffff",
-            'gray_light': "#f5f5f7",
-            'gray': "#e0e0e0",
-            'success': "#28a745",
-            'danger': "#dc3545",
-            'warning': "#ffc107"
-        }
-        
-        self.setup_ui()
-        
-    def setup_ui(self):
-        """Setup UI utama"""
-        # Configure grid
-        self.window.grid_columnconfigure(0, weight=1)
-        self.window.grid_rowconfigure(0, weight=1)
-        
-        # Main container
-        self.main_container = ctk.CTkFrame(
-            self.window,
-            fg_color=self.colors['white'],
+        self.folders_data = [] 
+        self.shortcuts_data = []
+
+        # Container Utama
+        self.main_scroll = ctk.CTkScrollableFrame(
+            self, 
+            fg_color="transparent", 
             corner_radius=0
         )
-        self.main_container.grid(row=0, column=0, sticky="nsew")
-        self.main_container.grid_columnconfigure(0, weight=1)
-        self.main_container.grid_rowconfigure(0, weight=1)
+        self.main_scroll.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # Mulai dengan Halaman Konfigurasi
+        self.init_config_page()
+
+    # ==========================================
+    # HALAMAN 1: KONFIGURASI (SETUP)
+    # ==========================================
+    def init_config_page(self):
+        self.clear_frame(self.main_scroll)
         
-        self.show_start_screen()
+        # --- Hero Header ---
+        header_frame = ctk.CTkFrame(self.main_scroll, fg_color=COLOR_PRIMARY, height=100, corner_radius=0)
+        header_frame.pack(fill="x")
         
-    def show_start_screen(self):
-        """Tampilan awal aplikasi"""
-        # Clear container
-        for widget in self.main_container.winfo_children():
-            widget.destroy()
-        
-        # Start screen frame
-        start_frame = ctk.CTkFrame(
-            self.main_container,
-            fg_color=self.colors['white'],
-            corner_radius=20
+        lbl_title = ctk.CTkLabel(
+            header_frame, 
+            text="Konfigurasi Sortir Foto", 
+            font=("Segoe UI", 28, "bold"), 
+            text_color="white"
         )
-        start_frame.grid(row=0, column=0, padx=50, pady=50, sticky="nsew")
-        start_frame.grid_columnconfigure(0, weight=1)
-        start_frame.grid_rowconfigure(1, weight=1)
-        
-        # Header dengan warna navy
-        header_frame = ctk.CTkFrame(
-            start_frame,
-            fg_color=self.colors['navy'],
-            height=100,
-            corner_radius=15
+        lbl_title.pack(pady=(25, 5))
+        lbl_subtitle = ctk.CTkLabel(
+            header_frame, 
+            text="Atur folder sumber, tujuan, dan shortcut keyboard anda", 
+            font=("Segoe UI", 14), 
+            text_color="#94A3B8"
         )
-        header_frame.grid(row=0, column=0, padx=30, pady=(30, 20), sticky="ew")
-        header_frame.grid_columnconfigure(0, weight=1)
+        lbl_subtitle.pack(pady=(0, 25))
+
+        # Container Content
+        content_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
+        content_frame.pack(fill="both", padx=40, pady=20)
+
+        # 1. Card: Pilih Source Folder
+        self._create_section_header(content_frame, "1. Sumber Foto", "Pilih folder berisi foto yang ingin dirapikan.")
         
-        title_label = ctk.CTkLabel(
-            header_frame,
-            text="Image Sorter Professional",
-            font=ctk.CTkFont(family="Helvetica", size=28, weight="bold"),
-            text_color=self.colors['white']
+        card_source = ctk.CTkFrame(content_frame, fg_color=COLOR_SURFACE, corner_radius=10, border_width=1, border_color=COLOR_BORDER)
+        card_source.pack(fill="x", pady=(5, 20), ipady=10)
+
+        inner_source = ctk.CTkFrame(card_source, fg_color="transparent")
+        inner_source.pack(fill="x", padx=20, pady=10)
+
+        self.btn_source = ctk.CTkButton(
+            inner_source, 
+            text="📂 Pilih Folder Sumber", 
+            command=self.select_source_folder,
+            fg_color=COLOR_ACCENT, 
+            hover_color="#2563EB",
+            font=("Segoe UI", 14, "bold"),
+            height=40
         )
-        title_label.grid(row=0, column=0, pady=20)
+        self.btn_source.pack(side="left")
         
-        subtitle_label = ctk.CTkLabel(
-            header_frame,
-            text="Sort your images efficiently with custom categories",
-            font=ctk.CTkFont(family="Helvetica", size=14),
-            text_color=self.colors['gray_light']
+        self.lbl_source_path = ctk.CTkLabel(inner_source, text="Belum ada folder dipilih", text_color="gray", font=("Consolas", 12))
+        self.lbl_source_path.pack(side="left", padx=15)
+
+        # 2. Card: Setup Folder Tujuan
+        self._create_section_header(content_frame, "2. Folder Tujuan", "Buat label kategori dan lokasi penyimpanannya.")
+
+        card_dest = ctk.CTkFrame(content_frame, fg_color=COLOR_SURFACE, corner_radius=10, border_width=1, border_color=COLOR_BORDER)
+        card_dest.pack(fill="x", pady=(5, 20), ipady=5)
+
+        self.folder_container = ctk.CTkFrame(card_dest, fg_color="transparent")
+        self.folder_container.pack(fill="x", padx=10, pady=10)
+        
+        self.folder_entries = [] 
+        
+        btn_add_folder = ctk.CTkButton(
+            card_dest, 
+            text="+ Tambah Kategori Baru", 
+            command=self.add_folder_row,
+            fg_color="transparent", 
+            text_color=COLOR_ACCENT,
+            border_width=1,
+            border_color=COLOR_ACCENT,
+            hover_color="#EFF6FF"
         )
-        subtitle_label.grid(row=1, column=0, pady=(0, 20))
-        
-        # Content frame
-        content_frame = ctk.CTkFrame(
-            start_frame,
-            fg_color=self.colors['gray_light'],
-            corner_radius=15
+        btn_add_folder.pack(pady=10)
+
+        # 3. Card: Setup Shortcut
+        self._create_section_header(content_frame, "3. Shortcut Keyboard", "Petakan tombol keyboard ke folder tujuan.")
+
+        card_shortcut = ctk.CTkFrame(content_frame, fg_color=COLOR_SURFACE, corner_radius=10, border_width=1, border_color=COLOR_BORDER)
+        card_shortcut.pack(fill="x", pady=(5, 20), ipady=5)
+
+        self.shortcut_container = ctk.CTkFrame(card_shortcut, fg_color="transparent")
+        self.shortcut_container.pack(fill="x", padx=10, pady=10)
+
+        self.shortcut_rows = [] 
+
+        btn_add_shortcut = ctk.CTkButton(
+            card_shortcut, 
+            text="+ Tambah Shortcut", 
+            command=self.add_shortcut_row,
+            fg_color="transparent", 
+            text_color=COLOR_ACCENT,
+            border_width=1,
+            border_color=COLOR_ACCENT,
+            hover_color="#EFF6FF"
         )
-        content_frame.grid(row=1, column=0, padx=30, pady=20, sticky="nsew")
-        content_frame.grid_columnconfigure(0, weight=1)
-        content_frame.grid_rowconfigure(1, weight=1)
-        
-        # Step indicators
-        steps_frame = ctk.CTkFrame(
-            content_frame,
-            fg_color="transparent"
+        btn_add_shortcut.pack(pady=10)
+
+        # Tombol Mulai (Floating Action Style)
+        self.btn_start = ctk.CTkButton(
+            content_frame, 
+            text="MULAI MENYORTIR 🚀", 
+            command=self.start_sorting_process,
+            font=("Segoe UI", 16, "bold"),
+            height=55,
+            corner_radius=27,
+            fg_color=COLOR_PRIMARY, 
+            hover_color="#1E293B"
         )
-        steps_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
-        steps_frame.grid_columnconfigure((0,1,2), weight=1)
+        self.btn_start.pack(pady=30, fill="x", padx=100)
+
+        # Inisialisasi baris awal
+        self.add_folder_row()
+        self.add_shortcut_row()
+
+    def _create_section_header(self, parent, title, subtitle):
+        f = ctk.CTkFrame(parent, fg_color="transparent")
+        f.pack(fill="x", pady=(10,0))
+        ctk.CTkLabel(f, text=title, font=("Segoe UI", 18, "bold"), text_color=COLOR_PRIMARY).pack(anchor="w")
+        ctk.CTkLabel(f, text=subtitle, font=("Segoe UI", 12), text_color="gray").pack(anchor="w")
+
+    # --- Logika Setup Folder (Desain Row Diperbaiki) ---
+    def add_folder_row(self):
+        row_frame = ctk.CTkFrame(self.folder_container, fg_color="transparent")
+        row_frame.pack(fill="x", pady=5)
         
-        steps = [
-            ("1", "Select Folder", "Choose source folder with images"),
-            ("2", "Configure", "Setup folders and shortcuts"),
-            ("3", "Start Sorting", "Begin organizing images")
-        ]
+        # Label Nomor
+        idx = len(self.folder_entries) + 1
+        ctk.CTkLabel(row_frame, text=f"#{idx}", width=30, text_color="gray").pack(side="left")
+
+        entry_name = ctk.CTkEntry(row_frame, placeholder_text="Nama Label (mis: Liburan)", width=200, height=35)
+        entry_name.pack(side="left", padx=5)
         
-        for i, (num, title, desc) in enumerate(steps):
-            step_card = ctk.CTkFrame(
-                steps_frame,
-                fg_color=self.colors['white'],
-                corner_radius=12,
-                height=120
-            )
-            step_card.grid(row=0, column=i, padx=10, pady=10, sticky="ew")
-            step_card.grid_columnconfigure(0, weight=1)
+        entry_path = ctk.CTkEntry(row_frame, placeholder_text="Path Folder Tujuan...", width=300, height=35)
+        entry_path.pack(side="left", padx=5, expand=True, fill="x")
+        
+        def browse_dest():
+            d = filedialog.askdirectory()
+            if d:
+                entry_path.delete(0, "end")
+                entry_path.insert(0, d)
+
+        btn_browse = ctk.CTkButton(row_frame, text="📂", width=40, height=35, command=browse_dest, fg_color="#CBD5E1", hover_color="#94A3B8", text_color="black")
+        btn_browse.pack(side="left", padx=5)
+
+        self.folder_entries.append({"name": entry_name, "path": entry_path, "frame": row_frame})
+
+    # --- Logika Setup Shortcut (Desain Row Diperbaiki) ---
+    def add_shortcut_row(self):
+        row_frame = ctk.CTkFrame(self.shortcut_container, fg_color="#F8FAFC", corner_radius=6, border_width=1, border_color="#E2E8F0")
+        row_frame.pack(fill="x", pady=5, padx=5, ipady=5)
+        
+        left_sec = ctk.CTkFrame(row_frame, fg_color="transparent")
+        left_sec.pack(side="left", padx=10)
+        
+        ctk.CTkLabel(left_sec, text="Tekan Tombol:", font=("Segoe UI", 12, "bold")).pack(anchor="w")
+        entry_key = ctk.CTkEntry(left_sec, width=60, placeholder_text="A", font=("Consolas", 14, "bold"), justify="center")
+        entry_key.pack()
+        
+        divider = ctk.CTkFrame(row_frame, width=1, height=40, fg_color="#CBD5E1")
+        divider.pack(side="left", padx=10)
+
+        right_sec = ctk.CTkFrame(row_frame, fg_color="transparent")
+        right_sec.pack(side="left", fill="x", expand=True)
+        
+        ctk.CTkLabel(right_sec, text="Salin ke Folder:", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
+        
+        check_container = ctk.CTkFrame(right_sec, fg_color="transparent")
+        check_container.pack(fill="x")
+        
+        self.shortcut_rows.append({"key": entry_key, "frame": check_container, "checks": []})
+        self.refresh_shortcut_options()
+
+    def refresh_shortcut_options(self):
+        current_folders = [e["name"].get() for e in self.folder_entries]
+        
+        for row in self.shortcut_rows:
+            for widget in row["frame"].winfo_children():
+                widget.destroy()
             
-            num_label = ctk.CTkLabel(
-                step_card,
-                text=num,
-                font=ctk.CTkFont(size=24, weight="bold"),
-                text_color=self.colors['navy'],
-                width=40,
-                height=40,
-                corner_radius=20,
-                fg_color=self.colors['gray_light']
-            )
-            num_label.grid(row=0, column=0, pady=(15, 5))
-            
-            title_label = ctk.CTkLabel(
-                step_card,
-                text=title,
-                font=ctk.CTkFont(size=16, weight="bold"),
-                text_color=self.colors['navy']
-            )
-            title_label.grid(row=1, column=0, pady=5)
-            
-            desc_label = ctk.CTkLabel(
-                step_card,
-                text=desc,
-                font=ctk.CTkFont(size=12),
-                text_color="gray",
-                wraplength=200
-            )
-            desc_label.grid(row=2, column=0, pady=(0, 15))
-        
-        # Select folder button
-        self.select_btn = ctk.CTkButton(
-            content_frame,
-            text="Select Image Folder",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            fg_color=self.colors['navy'],
-            hover_color=self.colors['navy_light'],
-            height=60,
-            corner_radius=12,
-            command=self.select_source_folder
-        )
-        self.select_btn.grid(row=1, column=0, padx=50, pady=30, sticky="ew")
-        
+            row["checks"] = []
+            for i, folder_name in enumerate(current_folders):
+                name_display = folder_name if folder_name else f"Folder {i+1}"
+                chk = ctk.CTkCheckBox(
+                    row["frame"], 
+                    text=name_display, 
+                    fg_color=COLOR_ACCENT,
+                    font=("Segoe UI", 12),
+                    checkbox_height=20, checkbox_width=20
+                )
+                chk.pack(side="left", padx=10)
+                row["checks"].append(chk)
+
     def select_source_folder(self):
-        """Pilih folder sumber gambar"""
-        folder_selected = filedialog.askdirectory(
-            title="Select Folder Containing Images"
+        path = filedialog.askdirectory()
+        if path:
+            self.source_folder = path
+            self.lbl_source_path.configure(text=path, text_color=COLOR_TEXT)
+
+    # ==========================================
+    # LOGIKA VALIDASI (Tidak Berubah)
+    # ==========================================
+    def start_sorting_process(self):
+        if not self.source_folder:
+            messagebox.showerror("Error", "Pilih folder sumber foto dulu!")
+            return
+
+        valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp')
+        self.image_files = [f for f in os.listdir(self.source_folder) if f.lower().endswith(valid_extensions)]
+        self.image_files.sort()
+        
+        if not self.image_files:
+            messagebox.showerror("Error", "Folder kosong atau tidak ada gambar!")
+            return
+
+        self.folders_data = []
+        for entry in self.folder_entries:
+            name = entry["name"].get()
+            path = entry["path"].get()
+            if name and path:
+                full_path = os.path.join(path, name)
+                if not os.path.exists(full_path):
+                    try:
+                        os.makedirs(full_path)
+                    except OSError as e:
+                        messagebox.showerror("Error", f"Gagal membuat folder {name}: {e}")
+                        return
+                self.folders_data.append({"name": name, "path": full_path})
+        
+        if not self.folders_data:
+            messagebox.showerror("Error", "Minimal buat 1 folder tujuan!")
+            return
+
+        self.shortcuts_data = []
+        for row in self.shortcut_rows:
+            key = row["key"].get().lower()
+            selected_indices = [i for i, chk in enumerate(row["checks"]) if chk.get() == 1]
+            
+            if key and selected_indices:
+                valid_indices = [i for i in selected_indices if i < len(self.folders_data)]
+                if valid_indices:
+                    self.shortcuts_data.append({"key": key, "targets": valid_indices})
+
+        if not self.shortcuts_data:
+            messagebox.showerror("Error", "Atur minimal 1 tombol shortcut!")
+            return
+
+        self.init_sorting_page()
+
+    # ==========================================
+    # HALAMAN 2: SORTIR (DESIGN OVERHAUL)
+    # ==========================================
+    def init_sorting_page(self):
+        self.clear_frame(self.main_scroll)
+        self.current_image_index = 0
+        self.bind("<Key>", self.handle_keypress)
+        
+        # Grid Layout: Kiri (Gambar), Kanan (Kontrol)
+        container = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # --- Kolom Kiri: Image Viewer ---
+        left_col = ctk.CTkFrame(container, fg_color="#18181b", corner_radius=15) # Background gelap untuk foto
+        left_col.pack(side="left", fill="both", expand=True, padx=(0, 20))
+        
+        # Header Info File (Overlay style)
+        self.info_frame = ctk.CTkFrame(left_col, fg_color="#27272a", height=50, corner_radius=10)
+        self.info_frame.pack(fill="x", padx=10, pady=10)
+        
+        self.file_counter = ctk.CTkLabel(self.info_frame, text="1 / 100", font=("Consolas", 14, "bold"), text_color="#E2E8F0")
+        self.file_counter.pack(side="right", padx=15)
+        
+        self.file_name_lbl = ctk.CTkLabel(self.info_frame, text="Filename.jpg", font=("Segoe UI", 14), text_color="white")
+        self.file_name_lbl.pack(side="left", padx=15)
+
+        # Image Label
+        self.image_label = ctk.CTkLabel(left_col, text="", text_color="gray")
+        self.image_label.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Feedback Overlay (Toast Message)
+        self.toast_label = ctk.CTkLabel(
+            left_col, 
+            text="", 
+            fg_color=COLOR_ACCENT, 
+            text_color="white", 
+            corner_radius=20,
+            font=("Segoe UI", 14, "bold"),
+            width=200, height=40
         )
+        # Akan di place() manual saat ada aksi
+
+        # --- Kolom Kanan: Kontrol & Shortcut ---
+        right_col = ctk.CTkFrame(container, fg_color="transparent", width=300)
+        right_col.pack(side="right", fill="y")
+
+        # Navigasi Manual
+        nav_card = ctk.CTkFrame(right_col, fg_color=COLOR_SURFACE, corner_radius=10)
+        nav_card.pack(fill="x", pady=(0, 20), ipady=10)
         
-        if folder_selected:
-            self.source_folder = folder_selected
-            if self.load_images():
-                self.show_configuration_screen()
-            
-    def load_images(self):
-        """Load semua file gambar dari folder"""
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
-        self.image_files = []
+        ctk.CTkLabel(nav_card, text="Navigasi", font=("Segoe UI", 12, "bold"), text_color="gray").pack(pady=5)
+        nav_btns = ctk.CTkFrame(nav_card, fg_color="transparent")
+        nav_btns.pack()
         
-        try:
-            for file in os.listdir(self.source_folder):
-                if Path(file).suffix.lower() in image_extensions:
-                    self.image_files.append(os.path.join(self.source_folder, file))
+        ctk.CTkButton(nav_btns, text="← Prev", command=self.prev_image, width=80, fg_color="#E2E8F0", text_color="black", hover_color="#CBD5E1").pack(side="left", padx=5)
+        ctk.CTkButton(nav_btns, text="Next →", command=self.next_image, width=80, fg_color="#E2E8F0", text_color="black", hover_color="#CBD5E1").pack(side="left", padx=5)
+
+        # Visual Grid Shortcut
+        shortcut_card = ctk.CTkFrame(right_col, fg_color=COLOR_SURFACE, corner_radius=10)
+        shortcut_card.pack(fill="both", expand=True, ipady=10)
+        
+        ctk.CTkLabel(shortcut_card, text="SHORTCUT KEYBOARD", font=("Segoe UI", 14, "bold"), text_color=COLOR_PRIMARY).pack(pady=15)
+
+        self.buttons_frame = ctk.CTkScrollableFrame(shortcut_card, fg_color="transparent")
+        self.buttons_frame.pack(fill="both", expand=True, padx=10)
+
+        for s_data in self.shortcuts_data:
+            key = s_data["key"].upper()
+            target_names = [self.folders_data[i]["name"] for i in s_data["targets"]]
+            desc = " + ".join(target_names)
             
-            if not self.image_files:
-                messagebox.showwarning("Warning", "No images found in the selected folder!")
-                return False
-            else:
-                self.image_files.sort()
-                return True
+            # Button Style Card
+            btn_frame = ctk.CTkFrame(self.buttons_frame, fg_color="#F8FAFC", border_width=1, border_color="#E2E8F0", corner_radius=8)
+            btn_frame.pack(fill="x", pady=5)
+            
+            # Bagian Kiri (Key)
+            key_container = ctk.CTkFrame(btn_frame, fg_color=COLOR_PRIMARY, width=50, height=50, corner_radius=6)
+            key_container.pack(side="left", padx=5, pady=5)
+            # Agar ukuran tetap
+            key_container.pack_propagate(False) 
+            
+            ctk.CTkLabel(key_container, text=key, font=("Consolas", 20, "bold"), text_color="white").place(relx=0.5, rely=0.5, anchor="center")
+            
+            # Bagian Kanan (Info)
+            info_container = ctk.CTkFrame(btn_frame, fg_color="transparent")
+            info_container.pack(side="left", padx=10, fill="x", expand=True)
+            
+            ctk.CTkLabel(info_container, text="Simpan ke:", font=("Segoe UI", 10), text_color="gray").pack(anchor="w")
+            ctk.CTkLabel(info_container, text=desc, font=("Segoe UI", 12, "bold"), text_color=COLOR_TEXT, wraplength=150, justify="left").pack(anchor="w")
+
+            # Bind klik frame manual agar bisa diklik mouse juga
+            btn_frame.bind("<Button-1>", lambda e, k=s_data["key"]: self.execute_sort(k))
+            for child in btn_frame.winfo_children():
+                # Propagate click event
+                for subchild in child.winfo_children():
+                     subchild.bind("<Button-1>", lambda e, k=s_data["key"]: self.execute_sort(k))
+                child.bind("<Button-1>", lambda e, k=s_data["key"]: self.execute_sort(k))
+
+
+        self.load_image()
+
+    def show_toast(self, message):
+        # Tampilkan overlay pesan sukses
+        self.toast_label.configure(text=f"✓ {message}")
+        self.toast_label.place(relx=0.5, rely=0.9, anchor="center")
+        # Hilangkan setelah 1.5 detik
+        self.after(1500, lambda: self.toast_label.place_forget())
+
+    def load_image(self):
+        if 0 <= self.current_image_index < len(self.image_files):
+            file_name = self.image_files[self.current_image_index]
+            file_path = os.path.join(self.source_folder, file_name)
+            
+            self.file_counter.configure(text=f"{self.current_image_index + 1} / {len(self.image_files)}")
+            self.file_name_lbl.configure(text=file_name)
+            
+            try:
+                img = Image.open(file_path)
                 
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load images: {str(e)}")
-            return False
-            
-    def show_configuration_screen(self):
-        """Tampilan konfigurasi folder dan tombol"""
-        # Clear container
-        for widget in self.main_container.winfo_children():
-            widget.destroy()
-        
-        # Config frame
-        config_frame = ctk.CTkFrame(
-            self.main_container,
-            fg_color=self.colors['white'],
-            corner_radius=20
-        )
-        config_frame.grid(row=0, column=0, padx=50, pady=50, sticky="nsew")
-        config_frame.grid_columnconfigure(0, weight=1)
-        config_frame.grid_rowconfigure(1, weight=1)
-        
-        # Header
-        header_label = ctk.CTkLabel(
-            config_frame,
-            text="Configuration Setup",
-            font=ctk.CTkFont(size=24, weight="bold"),
-            text_color=self.colors['navy']
-        )
-        header_label.grid(row=0, column=0, pady=(30, 20))
-        
-        # Main content area with scroll
-        content_area = ctk.CTkScrollableFrame(
-            config_frame,
-            fg_color=self.colors['gray_light'],
-            corner_radius=15
-        )
-        content_area.grid(row=1, column=0, padx=30, pady=20, sticky="nsew")
-        content_area.grid_columnconfigure(0, weight=1)
-        
-        # Number of folders
-        folder_count_frame = ctk.CTkFrame(
-            content_area,
-            fg_color=self.colors['white'],
-            corner_radius=12
-        )
-        folder_count_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
-        folder_count_frame.grid_columnconfigure(1, weight=1)
-        
-        ctk.CTkLabel(
-            folder_count_frame,
-            text="Number of Destination Folders:",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color=self.colors['navy']
-        ).grid(row=0, column=0, padx=20, pady=20)
-        
-        self.folder_count_var = ctk.StringVar(value="4")
-        folder_spinbox = ctk.CTkEntry(
-            folder_count_frame,
-            textvariable=self.folder_count_var,
-            width=80,
-            height=40,
-            font=ctk.CTkFont(size=14),
-            border_color=self.colors['navy'],
-            fg_color=self.colors['white']
-        )
-        folder_spinbox.grid(row=0, column=1, padx=20, pady=20)
-        
-        apply_btn = ctk.CTkButton(
-            folder_count_frame,
-            text="Apply",
-            fg_color=self.colors['navy'],
-            hover_color=self.colors['navy_light'],
-            width=100,
-            height=40,
-            corner_radius=8,
-            command=self.create_folder_inputs
-        )
-        apply_btn.grid(row=0, column=2, padx=20, pady=20)
-        
-        # Container for dynamic folder inputs
-        self.folder_inputs_frame = ctk.CTkFrame(
-            content_area,
-            fg_color="transparent"
-        )
-        self.folder_inputs_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
-        self.folder_inputs_frame.grid_columnconfigure(0, weight=1)
-        
-        # Button configuration section
-        button_config_frame = ctk.CTkFrame(
-            content_area,
-            fg_color=self.colors['white'],
-            corner_radius=12
-        )
-        button_config_frame.grid(row=2, column=0, padx=20, pady=20, sticky="ew")
-        button_config_frame.grid_columnconfigure(0, weight=1)
-        
-        ctk.CTkLabel(
-            button_config_frame,
-            text="Button Functions Configuration",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color=self.colors['navy']
-        ).grid(row=0, column=0, padx=20, pady=(20, 10))
-        
-        info_text = ctk.CTkLabel(
-            button_config_frame,
-            text="Configure your sorting buttons below. Each button can save to one or multiple folders.",
-            font=ctk.CTkFont(size=12),
-            text_color="gray",
-            wraplength=600
-        )
-        info_text.grid(row=1, column=0, padx=20, pady=(0, 20))
-        
-        # Button functions container
-        self.button_functions_frame = ctk.CTkFrame(
-            button_config_frame,
-            fg_color="transparent"
-        )
-        self.button_functions_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-        self.button_functions_frame.grid_columnconfigure(0, weight=1)
-        
-        # Default button functions
-        self.button_functions = []
-        self.create_default_button_functions()
-        
-        # Add custom button
-        add_button_btn = ctk.CTkButton(
-            button_config_frame,
-            text="+ Add Custom Button",
-            fg_color=self.colors['navy_light'],
-            hover_color=self.colors['navy'],
-            width=200,
-            height=40,
-            corner_radius=8,
-            command=self.add_custom_button_function
-        )
-        add_button_btn.grid(row=3, column=0, pady=20)
-        
-        # Navigation buttons
-        nav_frame = ctk.CTkFrame(
-            config_frame,
-            fg_color="transparent"
-        )
-        nav_frame.grid(row=2, column=0, padx=30, pady=(0, 30), sticky="ew")
-        nav_frame.grid_columnconfigure((0,1), weight=1)
-        
-        back_btn = ctk.CTkButton(
-            nav_frame,
-            text="← Back",
-            font=ctk.CTkFont(size=14),
-            fg_color="gray",
-            hover_color="darkgray",
-            width=150,
-            height=45,
-            corner_radius=10,
-            command=self.show_start_screen
-        )
-        back_btn.grid(row=0, column=0, padx=10)
-        
-        start_sorting_btn = ctk.CTkButton(
-            nav_frame,
-            text="Start Sorting →",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color=self.colors['success'],
-            hover_color="#218838",
-            width=150,
-            height=45,
-            corner_radius=10,
-            command=self.start_sorting
-        )
-        start_sorting_btn.grid(row=0, column=1, padx=10)
-        
-        # Create initial folder inputs
-        self.create_folder_inputs()
-        
-    def create_folder_inputs(self):
-        """Create input fields for folder paths"""
-        # Clear existing inputs
-        for widget in self.folder_inputs_frame.winfo_children():
-            widget.destroy()
-        
-        try:
-            self.folder_count = int(self.folder_count_var.get())
-            if self.folder_count < 1 or self.folder_count > 10:
-                messagebox.showwarning("Warning", "Please enter a number between 1 and 10")
-                self.folder_count = 4
-                self.folder_count_var.set("4")
-        except ValueError:
-            messagebox.showwarning("Warning", "Please enter a valid number")
-            self.folder_count = 4
-            self.folder_count_var.set("4")
-        
-        self.destination_folders = [""] * self.folder_count
-        self.folder_paths = []
-        
-        # Title
-        title_label = ctk.CTkLabel(
-            self.folder_inputs_frame,
-            text="Destination Folders:",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color=self.colors['navy']
-        )
-        title_label.grid(row=0, column=0, pady=(10, 20), sticky="w")
-        
-        # Create input for each folder
-        for i in range(self.folder_count):
-            folder_frame = ctk.CTkFrame(
-                self.folder_inputs_frame,
-                fg_color=self.colors['white'],
-                corner_radius=10,
-                border_width=1,
-                border_color=self.colors['gray']
-            )
-            folder_frame.grid(row=i+1, column=0, padx=10, pady=5, sticky="ew")
-            folder_frame.grid_columnconfigure(1, weight=1)
-            
-            # Folder label
-            folder_label = ctk.CTkLabel(
-                folder_frame,
-                text=f"Folder {chr(65+i)}:",
-                font=ctk.CTkFont(size=13, weight="bold"),
-                text_color=self.colors['navy'],
-                width=80
-            )
-            folder_label.grid(row=0, column=0, padx=15, pady=15)
-            
-            # Path entry
-            path_var = ctk.StringVar()
-            path_entry = ctk.CTkEntry(
-                folder_frame,
-                textvariable=path_var,
-                font=ctk.CTkFont(size=12),
-                height=40,
-                border_color=self.colors['gray'],
-                fg_color=self.colors['gray_light'],
-                placeholder_text="Select folder location..."
-            )
-            path_entry.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
-            
-            # Browse button
-            browse_btn = ctk.CTkButton(
-                folder_frame,
-                text="Browse",
-                font=ctk.CTkFont(size=12),
-                fg_color=self.colors['navy_light'],
-                hover_color=self.colors['navy'],
-                width=80,
-                height=35,
-                corner_radius=6,
-                command=lambda idx=i, var=path_var: self.browse_folder(idx, var)
-            )
-            browse_btn.grid(row=0, column=2, padx=15, pady=10)
-            
-            self.folder_paths.append((path_var, path_entry))
-            
-    def browse_folder(self, index, path_var):
-        """Browse and select destination folder"""
-        folder = filedialog.askdirectory(title=f"Select Folder {chr(65+index)} Location")
-        if folder:
-            path_var.set(folder)
-            self.destination_folders[index] = folder
-            
-    def create_default_button_functions(self):
-        """Create default button functions"""
-        self.button_functions = []
-        
-        # Clear existing
-        for widget in self.button_functions_frame.winfo_children():
-            widget.destroy()
-        
-        # Single folder buttons
-        default_functions = [
-            ("1", "Save to Folder A", [0]),
-            ("2", "Save to Folder B", [1]),
-            ("3", "Save to Folder C", [2]),
-            ("4", "Save to Folder D", [3]),
-            ("5", "Save to Folders A & B", [0, 1]),
-            ("6", "Save to Folders C & D", [2, 3]),
-            ("7", "Save to All Folders", [0, 1, 2, 3]),
-            ("8", "Save to Folders A, B & C", [0, 1, 2])
-        ]
-        
-        for i, (key, desc, folders) in enumerate(default_functions):
-            self.add_button_function_row(key, desc, folders)
-            
-    def add_button_function_row(self, key="", desc="", selected_folders=None):
-        """Add a row for button function configuration"""
-        if selected_folders is None:
-            selected_folders = []
-            
-        row_frame = ctk.CTkFrame(
-            self.button_functions_frame,
-            fg_color=self.colors['gray_light'],
-            corner_radius=8,
-            height=70
-        )
-        row_frame.grid(row=len(self.button_functions), column=0, padx=10, pady=5, sticky="ew")
-        row_frame.grid_columnconfigure(2, weight=1)
-        row_frame.grid_propagate(False)
-        
-        # Keyboard shortcut
-        key_var = ctk.StringVar(value=key)
-        key_entry = ctk.CTkEntry(
-            row_frame,
-            textvariable=key_var,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            width=50,
-            height=35,
-            border_color=self.colors['navy'],
-            justify="center",
-            placeholder_text="Key"
-        )
-        key_entry.grid(row=0, column=0, padx=(15, 5), pady=17)
-        
-        # Description
-        desc_var = ctk.StringVar(value=desc)
-        desc_entry = ctk.CTkEntry(
-            row_frame,
-            textvariable=desc_var,
-            font=ctk.CTkFont(size=13),
-            height=35,
-            border_color=self.colors['gray'],
-            placeholder_text="Button description"
-        )
-        desc_entry.grid(row=0, column=1, padx=5, pady=17, sticky="ew")
-        
-        # Folder selection checkboxes
-        folders_frame = ctk.CTkFrame(
-            row_frame,
-            fg_color="transparent"
-        )
-        folders_frame.grid(row=0, column=2, padx=10, pady=17, sticky="ew")
-        
-        folder_vars = []
-        for i in range(4):  # Max 4 folders for now
-            var = ctk.IntVar(value=1 if i in selected_folders else 0)
-            folder_vars.append(var)
-            checkbox = ctk.CTkCheckBox(
-                folders_frame,
-                text=f"{chr(65+i)}",
-                variable=var,
-                font=ctk.CTkFont(size=12),
-                checkbox_width=20,
-                checkbox_height=20,
-                border_color=self.colors['navy'],
-                fg_color=self.colors['navy'],
-                hover_color=self.colors['navy_light']
-            )
-            checkbox.grid(row=0, column=i, padx=5)
-        
-        # Delete button (for custom functions)
-        if len(self.button_functions) >= 8:
-            delete_btn = ctk.CTkButton(
-                row_frame,
-                text="✕",
-                font=ctk.CTkFont(size=14, weight="bold"),
-                width=35,
-                height=35,
-                fg_color=self.colors['danger'],
-                hover_color="#c82333",
-                corner_radius=6,
-                command=lambda: self.delete_button_function(row_frame)
-            )
-            delete_btn.grid(row=0, column=3, padx=15, pady=17)
-        
-        # Store button function
-        self.button_functions.append({
-            'frame': row_frame,
-            'key': key_var,
-            'description': desc_var,
-            'folder_vars': folder_vars,
-            'row_index': len(self.button_functions)
-        })
-        
-    def add_custom_button_function(self):
-        """Add a custom button function"""
-        if len(self.button_functions) < 12:
-            next_key = str(len(self.button_functions) + 1)
-            self.add_button_function_row(next_key, "Custom Function", [0])
+                # Logic resize (Max height 600)
+                aspect_ratio = img.width / img.height
+                new_height = 600
+                new_width = int(new_height * aspect_ratio)
+                
+                my_image = ctk.CTkImage(light_image=img, dark_image=img, size=(new_width, new_height))
+                self.image_label.configure(image=my_image, text="")
+            except Exception as e:
+                self.image_label.configure(image=None, text=f"Error loading: {e}")
         else:
-            messagebox.showwarning("Warning", "Maximum 12 buttons allowed")
-            
-    def delete_button_function(self, frame):
-        """Delete a custom button function"""
-        for i, func in enumerate(self.button_functions):
-            if func['frame'] == frame:
-                frame.destroy()
-                self.button_functions.pop(i)
+            self.end_session()
+
+    def handle_keypress(self, event):
+        key = event.char.lower()
+        for s in self.shortcuts_data:
+            if s["key"] == key:
+                self.execute_sort(key)
                 break
                 
-    def start_sorting(self):
-        """Start the sorting process"""
-        # Validate destination folders
-        if not all(self.destination_folders):
-            messagebox.showwarning("Warning", "Please select all destination folders!")
-            return
+    def execute_sort(self, key):
+        shortcut = next((s for s in self.shortcuts_data if s["key"] == key), None)
+        if not shortcut: return
+
+        current_file = self.image_files[self.current_image_index]
+        src_path = os.path.join(self.source_folder, current_file)
+
+        success_list = []
+        for target_idx in shortcut["targets"]:
+            dest_folder_info = self.folders_data[target_idx]
+            dest_path = dest_folder_info["path"]
             
-        # Create destination folders if they don't exist
-        for folder in self.destination_folders:
-            if folder and not os.path.exists(folder):
-                os.makedirs(folder)
-                
-        # Validate button functions
-        if not self.button_functions:
-            messagebox.showwarning("Warning", "Please configure at least one button function!")
-            return
-            
-        # Setup keyboard shortcuts
-        self.setup_keyboard_shortcuts()
+            try:
+                shutil.copy2(src_path, dest_path)
+                success_list.append(dest_folder_info["name"])
+            except Exception as e:
+                print(f"Gagal copy ke {dest_folder_info['name']}: {e}")
+
+        # Panggil Toast
+        folder_names = ', '.join(success_list)
+        self.show_toast(f"Disimpan ke: {folder_names}")
         
-        # Reset index and history
-        self.current_index = 0
-        self.sorting_history = []
-        self.sorted_count = 0
-        
-        # Show sorting screen
-        self.show_sorting_screen()
-        
-    def setup_keyboard_shortcuts(self):
-        """Setup keyboard shortcuts for buttons"""
-        self.keyboard_shortcuts = {}
-        
-        for func in self.button_functions:
-            key = func['key'].get()
-            if key:
-                self.keyboard_shortcuts[key] = func
-                
-    def show_sorting_screen(self):
-        """Tampilan utama untuk sorting gambar"""
-        # Clear container
-        for widget in self.main_container.winfo_children():
-            widget.destroy()
-        
-        # Main sorting layout
-        self.sorting_frame = ctk.CTkFrame(
-            self.main_container,
-            fg_color=self.colors['white'],
-            corner_radius=0
-        )
-        self.sorting_frame.grid(row=0, column=0, sticky="nsew")
-        self.sorting_frame.grid_columnconfigure(0, weight=1)
-        self.sorting_frame.grid_rowconfigure(1, weight=1)
-        
-        # Top bar with progress
-        top_bar = ctk.CTkFrame(
-            self.sorting_frame,
-            fg_color=self.colors['navy'],
-            height=80,
-            corner_radius=0
-        )
-        top_bar.grid(row=0, column=0, sticky="ew")
-        top_bar.grid_columnconfigure(1, weight=1)
-        
-        # Progress info
-        self.progress_label = ctk.CTkLabel(
-            top_bar,
-            text=f"Sorting Images • 0 of {len(self.image_files)}",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color=self.colors['white']
-        )
-        self.progress_label.grid(row=0, column=0, padx=30, pady=20, sticky="w")
-        
-        # Progress bar
-        self.progress_bar = ctk.CTkProgressBar(
-            top_bar,
-            width=300,
-            height=12,
-            fg_color=self.colors['white'],
-            progress_color=self.colors['success']
-        )
-        self.progress_bar.grid(row=0, column=1, padx=20, pady=20, sticky="ew")
-        self.progress_bar.set(0)
-        
-        # Done button
-        self.done_btn = ctk.CTkButton(
-            top_bar,
-            text="Finish Sorting",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color=self.colors['success'],
-            hover_color="#218838",
-            width=150,
-            height=45,
-            corner_radius=10,
-            command=self.finish_sorting
-        )
-        self.done_btn.grid(row=0, column=2, padx=30, pady=20)
-        
-        # Main content area
-        content_frame = ctk.CTkFrame(
-            self.sorting_frame,
-            fg_color=self.colors['gray_light'],
-            corner_radius=0
-        )
-        content_frame.grid(row=1, column=0, sticky="nsew")
-        content_frame.grid_columnconfigure(0, weight=3)
-        content_frame.grid_columnconfigure(1, weight=1)
-        content_frame.grid_rowconfigure(0, weight=1)
-        
-        # Image display area (left side)
-        image_frame = ctk.CTkFrame(
-            content_frame,
-            fg_color=self.colors['white'],
-            corner_radius=20
-        )
-        image_frame.grid(row=0, column=0, padx=30, pady=30, sticky="nsew")
-        image_frame.grid_columnconfigure(0, weight=1)
-        image_frame.grid_rowconfigure(0, weight=1)
-        
-        # Image container
-        image_container = ctk.CTkFrame(
-            image_frame,
-            fg_color=self.colors['gray_light'],
-            corner_radius=15
-        )
-        image_container.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
-        image_container.grid_columnconfigure(0, weight=1)
-        image_container.grid_rowconfigure(0, weight=1)
-        
-        # Image label
-        self.image_label = ctk.CTkLabel(
-            image_container,
-            text="No Image",
-            font=ctk.CTkFont(size=16),
-            fg_color=self.colors['white'],
-            corner_radius=10
-        )
-        self.image_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
-        
-        # Image info
-        self.image_info_label = ctk.CTkLabel(
-            image_frame,
-            text="",
-            font=ctk.CTkFont(size=12),
-            text_color="gray"
-        )
-        self.image_info_label.grid(row=1, column=0, pady=(0, 20))
-        
-        # Navigation controls
-        nav_frame = ctk.CTkFrame(
-            image_frame,
-            fg_color="transparent"
-        )
-        nav_frame.grid(row=2, column=0, pady=(0, 20))
-        
-        self.prev_btn = ctk.CTkButton(
-            nav_frame,
-            text="← Previous",
-            font=ctk.CTkFont(size=13),
-            fg_color="gray",
-            hover_color="darkgray",
-            width=120,
-            height=40,
-            corner_radius=8,
-            command=self.previous_image
-        )
-        self.prev_btn.grid(row=0, column=0, padx=10)
-        
-        self.next_btn = ctk.CTkButton(
-            nav_frame,
-            text="Next →",
-            font=ctk.CTkFont(size=13),
-            fg_color=self.colors['navy'],
-            hover_color=self.colors['navy_light'],
-            width=120,
-            height=40,
-            corner_radius=8,
-            command=self.next_image
-        )
-        self.next_btn.grid(row=0, column=1, padx=10)
-        
-        # Buttons area (right side)
-        buttons_frame = ctk.CTkFrame(
-            content_frame,
-            fg_color=self.colors['white'],
-            corner_radius=20
-        )
-        buttons_frame.grid(row=0, column=1, padx=30, pady=30, sticky="nsew")
-        buttons_frame.grid_columnconfigure(0, weight=1)
-        buttons_frame.grid_rowconfigure(2, weight=1)
-        
-        # Buttons header
-        ctk.CTkLabel(
-            buttons_frame,
-            text="Sorting Actions",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color=self.colors['navy']
-        ).grid(row=0, column=0, pady=(30, 20))
-        
-        ctk.CTkLabel(
-            buttons_frame,
-            text="Press the corresponding key on your keyboard",
-            font=ctk.CTkFont(size=12),
-            text_color="gray"
-        ).grid(row=1, column=0, pady=(0, 20))
-        
-        # Scrollable buttons container
-        buttons_container = ctk.CTkScrollableFrame(
-            buttons_frame,
-            fg_color="transparent"
-        )
-        buttons_container.grid(row=2, column=0, padx=20, pady=10, sticky="nsew")
-        buttons_container.grid_columnconfigure(0, weight=1)
-        
-        # Create sorting buttons
-        self.sorting_buttons = []
-        for i, func in enumerate(self.button_functions):
-            btn_frame = ctk.CTkFrame(
-                buttons_container,
-                fg_color=self.colors['gray_light'],
-                corner_radius=12
-            )
-            btn_frame.grid(row=i, column=0, padx=10, pady=8, sticky="ew")
-            btn_frame.grid_columnconfigure(1, weight=1)
-            
-            # Shortcut key
-            key_text = func['key'].get() or str(i+1)
-            key_label = ctk.CTkLabel(
-                btn_frame,
-                text=key_text,
-                font=ctk.CTkFont(size=16, weight="bold"),
-                text_color=self.colors['white'],
-                width=40,
-                height=40,
-                corner_radius=20,
-                fg_color=self.colors['navy']
-            )
-            key_label.grid(row=0, column=0, padx=15, pady=15)
-            
-            # Button description
-            desc_text = func['description'].get() or f"Sort to selected folders"
-            desc_label = ctk.CTkLabel(
-                btn_frame,
-                text=desc_text,
-                font=ctk.CTkFont(size=14, weight="bold"),
-                text_color=self.colors['navy']
-            )
-            desc_label.grid(row=0, column=1, padx=10, pady=15, sticky="w")
-            
-            # Destination folders indicator
-            folders_indicator = []
-            for j, var in enumerate(func['folder_vars']):
-                if var.get() == 1 and j < self.folder_count:
-                    folders_indicator.append(chr(65+j))
-            
-            if folders_indicator:
-                folder_text = f"→ Folder(s): {', '.join(folders_indicator)}"
-                folder_label = ctk.CTkLabel(
-                    btn_frame,
-                    text=folder_text,
-                    font=ctk.CTkFont(size=12),
-                    text_color="gray"
-                )
-                folder_label.grid(row=1, column=1, padx=10, pady=(0, 15), sticky="w")
-            
-            # Bind button click
-            btn_frame.bind("<Button-1>", lambda e, f=func: self.sort_image(f))
-            
-            # Get the folders to save to
-            target_folders = []
-            for j, var in enumerate(func['folder_vars']):
-                if var.get() == 1 and j < len(self.destination_folders):
-                    if self.destination_folders[j]:
-                        target_folders.append(self.destination_folders[j])
-            
-            self.sorting_buttons.append({
-                'frame': btn_frame,
-                'key': key_text,
-                'function': func,
-                'target_folders': target_folders,
-                'description': desc_text
-            })
-        
-        # Bind keyboard shortcuts
-        self.window.bind('<Key>', self.handle_keyboard)
-        
-        # Load first image
-        if self.image_files:
-            self.load_current_image()
-        else:
-            messagebox.showerror("Error", "No images to sort!")
-            self.show_start_screen()
-            
-    def load_current_image(self):
-        """Load dan tampilkan gambar saat ini"""
-        try:
-            if 0 <= self.current_index < len(self.image_files):
-                image_path = self.image_files[self.current_index]
-                
-                # Load and resize image
-                pil_image = Image.open(image_path)
-                
-                # Calculate resize ratio to fit in display area
-                display_width = 700
-                display_height = 500
-                
-                # Calculate aspect ratio
-                aspect_ratio = pil_image.width / pil_image.height
-                if aspect_ratio > 1:
-                    new_width = display_width
-                    new_height = int(display_width / aspect_ratio)
-                else:
-                    new_height = display_height
-                    new_width = int(display_height * aspect_ratio)
-                
-                # Resize image
-                pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                
-                # Convert to PhotoImage
-                photo = ImageTk.PhotoImage(pil_image)
-                
-                # Update label
-                self.image_label.configure(image=photo, text="")
-                self.image_label.image = photo
-                
-                # Update info
-                filename = os.path.basename(image_path)
-                file_size = os.path.getsize(image_path) / 1024
-                self.image_info_label.configure(
-                    text=f"{filename} • {file_size:.1f} KB • {pil_image.width}x{pil_image.height}"
-                )
-                
-                # Update progress
-                self.progress_label.configure(
-                    text=f"Sorting Images • {self.current_index + 1} of {len(self.image_files)}"
-                )
-                self.progress_bar.set((self.current_index + 1) / len(self.image_files))
-                
-                # Update navigation buttons state
-                self.prev_btn.configure(state="normal" if self.current_index > 0 else "disabled")
-                self.next_btn.configure(
-                    state="normal" if self.current_index < len(self.image_files) - 1 else "disabled"
-                )
-                
-        except Exception as e:
-            print(f"Error loading image: {e}")
-            self.image_label.configure(text=f"Error loading image: {str(e)}")
-            
-    def sort_image(self, button_function):
-        """Sort gambar ke folder yang dituju"""
-        if not self.image_files or self.current_index >= len(self.image_files):
-            return
-            
-        try:
-            image_path = self.image_files[self.current_index]
-            filename = os.path.basename(image_path)
-            
-            # Get target folders from button function
-            target_folders = []
-            for j, var in enumerate(button_function['folder_vars']):
-                if var.get() == 1 and j < len(self.destination_folders):
-                    if self.destination_folders[j]:
-                        target_folders.append(self.destination_folders[j])
-            
-            if not target_folders:
-                messagebox.showwarning("Warning", "No destination folder selected!")
-                return
-                
-            # Save to each target folder
-            saved_count = 0
-            for folder in target_folders:
-                if folder and os.path.exists(folder):
-                    destination = os.path.join(folder, filename)
-                    
-                    # If file exists, add number suffix
-                    if os.path.exists(destination):
-                        name, ext = os.path.splitext(filename)
-                        counter = 1
-                        while os.path.exists(os.path.join(folder, f"{name}_{counter}{ext}")):
-                            counter += 1
-                        destination = os.path.join(folder, f"{name}_{counter}{ext}")
-                    
-                    shutil.copy2(image_path, destination)
-                    saved_count += 1
-            
-            if saved_count > 0:
-                # Record to history
-                self.sorting_history.append({
-                    'image': filename,
-                    'folders': [os.path.basename(f) for f in target_folders],
-                    'timestamp': datetime.now().strftime("%H:%M:%S")
-                })
-                self.sorted_count += 1
-                
-                # Move to next image
-                self.next_image()
-                
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to sort image: {str(e)}")
-            
-    def handle_keyboard(self, event):
-        """Handle keyboard shortcuts"""
-        key = event.char
-        
-        # Check if key is a number
-        if key.isdigit() or key:
-            for button in self.sorting_buttons:
-                if button['key'] == key:
-                    self.sort_image(button['function'])
-                    break
-        
-        # Navigation with arrow keys
-        if event.keysym == 'Left':
-            self.previous_image()
-        elif event.keysym == 'Right':
-            self.next_image()
-            
-    def previous_image(self):
-        """Pindah ke gambar sebelumnya"""
-        if self.current_index > 0:
-            self.current_index -= 1
-            self.load_current_image()
-            
+        self.next_image()
+
     def next_image(self):
-        """Pindah ke gambar berikutnya"""
-        if self.current_index < len(self.image_files) - 1:
-            self.current_index += 1
-            self.load_current_image()
-            
-    def finish_sorting(self):
-        """Selesaikan proses sorting"""
-        # Summary dialog
-        summary = f"Sorting completed!\n\n"
-        summary += f"Total images processed: {self.sorted_count}\n"
-        summary += f"Total images remaining: {len(self.image_files) - self.current_index - 1}\n\n"
-        summary += f"Images have been saved to {len(self.destination_folders)} folders."
-        
-        messagebox.showinfo("Sorting Complete", summary)
-        
-        # Reset and return to start screen
-        self.window.unbind('<Key>')
-        self.show_start_screen()
-        
-    def run(self):
-        """Jalankan aplikasi"""
-        self.window.mainloop()
+        if self.current_image_index < len(self.image_files) - 1:
+            self.current_image_index += 1
+            self.load_image()
+        else:
+            self.end_session()
+
+    def prev_image(self):
+        if self.current_image_index > 0:
+            self.current_image_index -= 1
+            self.load_image()
+
+    def end_session(self):
+        self.image_label.configure(image=None, text="🎉 SELESAI!\nSemua foto telah disortir.", font=("Segoe UI", 20, "bold"))
+        self.file_name_lbl.configure(text="-")
+        self.unbind("<Key>")
+
+    def clear_frame(self, frame):
+        for widget in frame.winfo_children():
+            widget.destroy()
 
 if __name__ == "__main__":
-    app = ModernImageSorter()
-    app.run()
+    app = SortirFotoApp()
+    app.mainloop()
