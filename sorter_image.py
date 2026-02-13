@@ -4,17 +4,17 @@ import os
 import shutil
 from PIL import Image
 
-# --- Konfigurasi Modern (Palette Slate & Blue) ---
+# --- Modern Configuration (Slate & Blue Palette) ---
 ctk.set_appearance_mode("Light") 
 ctk.set_default_color_theme("dark-blue") 
 
-# Palette Warna Professional
-COLOR_BG = "#F1F5F9"        # Background abu-abu muda
-COLOR_SURFACE = "#FFFFFF"   # Putih bersih untuk kartu
-COLOR_PRIMARY = "#0F172A"   # Navy Gelap
-COLOR_ACCENT = "#3B82F6"    # Biru Cerah
-COLOR_TEXT = "#334155"      # Teks abu tua
-COLOR_BORDER = "#E2E8F0"    # Garis halus
+# Professional Color Palette
+COLOR_BG = "#F1F5F9"        # Light gray background
+COLOR_SURFACE = "#FFFFFF"   # Clean white for cards
+COLOR_PRIMARY = "#0F172A"   # Dark Navy
+COLOR_ACCENT = "#3B82F6"    # Bright Blue
+COLOR_TEXT = "#334155"      # Dark gray text
+COLOR_BORDER = "#E2E8F0"    # Subtle border
 
 class SortirFotoApp(ctk.CTk):
     def __init__(self):
@@ -24,7 +24,7 @@ class SortirFotoApp(ctk.CTk):
         self.geometry("1100x800")
         self.configure(fg_color=COLOR_BG)
 
-        # Variabel Data
+        # Data Variables
         self.source_folder = ""
         self.image_files = []
         self.current_image_index = 0
@@ -32,7 +32,7 @@ class SortirFotoApp(ctk.CTk):
         self.folders_data = [] 
         self.shortcuts_data = []
 
-        # Container Utama
+        # Main Container
         self.main_scroll = ctk.CTkScrollableFrame(
             self, 
             fg_color="transparent", 
@@ -40,16 +40,16 @@ class SortirFotoApp(ctk.CTk):
         )
         self.main_scroll.pack(fill="both", expand=True, padx=0, pady=0)
 
-        # Mulai dengan Halaman Konfigurasi
+        # Start with Configuration Page
         self.init_config_page()
 
     # ==========================================
-    # HALAMAN 1: KONFIGURASI (SETUP)
+    # PAGE 1: CONFIGURATION (SETUP)
     # ==========================================
     def init_config_page(self):
         self.clear_frame(self.main_scroll)
         
-        # Reset Data Penting saat kembali ke menu utama
+        # Reset Important Data when returning to main menu
         self.image_files = []
         self.current_image_index = 0
         
@@ -59,25 +59,25 @@ class SortirFotoApp(ctk.CTk):
         
         lbl_title = ctk.CTkLabel(
             header_frame, 
-            text="Konfigurasi Sortir Foto", 
+            text="Photo Sorting Configuration", 
             font=("Segoe UI", 28, "bold"), 
             text_color="white"
         )
         lbl_title.pack(pady=(25, 5))
         lbl_subtitle = ctk.CTkLabel(
             header_frame, 
-            text="Atur folder sumber, tujuan, dan shortcut keyboard anda", 
+            text="Set your source folder, destination folders, and keyboard shortcuts", 
             font=("Segoe UI", 14), 
             text_color="#94A3B8"
         )
         lbl_subtitle.pack(pady=(0, 25))
 
-        # Container Content
+        # Content Container
         content_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
         content_frame.pack(fill="both", padx=40, pady=20)
 
-        # 1. Card: Pilih Source Folder
-        self._create_section_header(content_frame, "1. Sumber Foto", "Pilih folder berisi foto yang ingin dirapikan.")
+        # 1. Card: Select Source Folder
+        self._create_section_header(content_frame, "1. Photo Source", "Select the folder containing photos to organize.")
         
         card_source = ctk.CTkFrame(content_frame, fg_color=COLOR_SURFACE, corner_radius=10, border_width=1, border_color=COLOR_BORDER)
         card_source.pack(fill="x", pady=(5, 20), ipady=10)
@@ -87,7 +87,7 @@ class SortirFotoApp(ctk.CTk):
 
         self.btn_source = ctk.CTkButton(
             inner_source, 
-            text="📂 Pilih Folder Sumber", 
+            text="📂 Select Source Folder", 
             command=self.select_source_folder,
             fg_color=COLOR_ACCENT, 
             hover_color="#2563EB",
@@ -96,13 +96,13 @@ class SortirFotoApp(ctk.CTk):
         )
         self.btn_source.pack(side="left")
         
-        # Tampilkan path jika sudah ada (misal user kembali ke menu tapi path masih tersimpan)
-        display_path = self.source_folder if self.source_folder else "Belum ada folder dipilih"
+        # Display path if already exists (e.g., user returns to menu but path is still saved)
+        display_path = self.source_folder if self.source_folder else "No folder selected"
         self.lbl_source_path = ctk.CTkLabel(inner_source, text=display_path, text_color="gray", font=("Consolas", 12))
         self.lbl_source_path.pack(side="left", padx=15)
 
-        # 2. Card: Setup Folder Tujuan
-        self._create_section_header(content_frame, "2. Folder Tujuan", "Buat label kategori dan lokasi penyimpanannya.")
+        # 2. Card: Destination Folder Setup
+        self._create_section_header(content_frame, "2. Destination Folders", "Create category labels and their storage locations.")
 
         card_dest = ctk.CTkFrame(content_frame, fg_color=COLOR_SURFACE, corner_radius=10, border_width=1, border_color=COLOR_BORDER)
         card_dest.pack(fill="x", pady=(5, 20), ipady=5)
@@ -114,7 +114,7 @@ class SortirFotoApp(ctk.CTk):
         
         btn_add_folder = ctk.CTkButton(
             card_dest, 
-            text="+ Tambah Kategori Baru", 
+            text="+ Add New Category", 
             command=self.add_folder_row,
             fg_color="transparent", 
             text_color=COLOR_ACCENT,
@@ -124,8 +124,8 @@ class SortirFotoApp(ctk.CTk):
         )
         btn_add_folder.pack(pady=10)
 
-        # 3. Card: Setup Shortcut
-        self._create_section_header(content_frame, "3. Shortcut Keyboard", "Petakan tombol keyboard ke folder tujuan.")
+        # 3. Card: Shortcut Setup
+        self._create_section_header(content_frame, "3. Keyboard Shortcuts", "Map keyboard keys to destination folders.")
 
         card_shortcut = ctk.CTkFrame(content_frame, fg_color=COLOR_SURFACE, corner_radius=10, border_width=1, border_color=COLOR_BORDER)
         card_shortcut.pack(fill="x", pady=(5, 20), ipady=5)
@@ -137,7 +137,7 @@ class SortirFotoApp(ctk.CTk):
 
         btn_add_shortcut = ctk.CTkButton(
             card_shortcut, 
-            text="+ Tambah Shortcut", 
+            text="+ Add Shortcut", 
             command=self.add_shortcut_row,
             fg_color="transparent", 
             text_color=COLOR_ACCENT,
@@ -147,10 +147,10 @@ class SortirFotoApp(ctk.CTk):
         )
         btn_add_shortcut.pack(pady=10)
 
-        # Tombol Mulai
+        # Start Button
         self.btn_start = ctk.CTkButton(
             content_frame, 
-            text="MULAI MENYORTIR 🚀", 
+            text="START SORTING 🚀", 
             command=self.start_sorting_process,
             font=("Segoe UI", 16, "bold"),
             height=55,
@@ -160,7 +160,7 @@ class SortirFotoApp(ctk.CTk):
         )
         self.btn_start.pack(pady=30, fill="x", padx=100)
 
-        # Inisialisasi baris awal (atau muat ulang jika data sudah ada sebelumnya - logic sederhana: reset dulu)
+        # Initialize initial rows (or reload if data already exists - simple logic: reset first)
         self.add_folder_row()
         self.add_shortcut_row()
 
@@ -177,10 +177,10 @@ class SortirFotoApp(ctk.CTk):
         idx = len(self.folder_entries) + 1
         ctk.CTkLabel(row_frame, text=f"#{idx}", width=30, text_color="gray").pack(side="left")
 
-        entry_name = ctk.CTkEntry(row_frame, placeholder_text="Nama Label (mis: Liburan)", width=200, height=35)
+        entry_name = ctk.CTkEntry(row_frame, placeholder_text="Label Name (e.g., Vacation)", width=200, height=35)
         entry_name.pack(side="left", padx=5)
         
-        entry_path = ctk.CTkEntry(row_frame, placeholder_text="Path Folder Tujuan...", width=300, height=35)
+        entry_path = ctk.CTkEntry(row_frame, placeholder_text="Destination Folder Path...", width=300, height=35)
         entry_path.pack(side="left", padx=5, expand=True, fill="x")
         
         def browse_dest():
@@ -201,7 +201,7 @@ class SortirFotoApp(ctk.CTk):
         left_sec = ctk.CTkFrame(row_frame, fg_color="transparent")
         left_sec.pack(side="left", padx=10)
         
-        ctk.CTkLabel(left_sec, text="Tekan Tombol:", font=("Segoe UI", 12, "bold")).pack(anchor="w")
+        ctk.CTkLabel(left_sec, text="Press Key:", font=("Segoe UI", 12, "bold")).pack(anchor="w")
         entry_key = ctk.CTkEntry(left_sec, width=60, placeholder_text="A", font=("Consolas", 14, "bold"), justify="center")
         entry_key.pack()
         
@@ -211,7 +211,7 @@ class SortirFotoApp(ctk.CTk):
         right_sec = ctk.CTkFrame(row_frame, fg_color="transparent")
         right_sec.pack(side="left", fill="x", expand=True)
         
-        ctk.CTkLabel(right_sec, text="Salin ke Folder:", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
+        ctk.CTkLabel(right_sec, text="Copy to Folder:", font=("Segoe UI", 12)).pack(anchor="w", pady=(0, 5))
         
         check_container = ctk.CTkFrame(right_sec, fg_color="transparent")
         check_container.pack(fill="x")
@@ -246,11 +246,11 @@ class SortirFotoApp(ctk.CTk):
             self.lbl_source_path.configure(text=path, text_color=COLOR_TEXT)
 
     # ==========================================
-    # LOGIKA START & VALIDASI
+    # START LOGIC & VALIDATION
     # ==========================================
     def start_sorting_process(self):
         if not self.source_folder:
-            messagebox.showerror("Error", "Pilih folder sumber foto dulu!")
+            messagebox.showerror("Error", "Please select a source photo folder first!")
             return
 
         valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp')
@@ -258,7 +258,7 @@ class SortirFotoApp(ctk.CTk):
         self.image_files.sort()
         
         if not self.image_files:
-            messagebox.showerror("Error", "Folder kosong atau tidak ada gambar!")
+            messagebox.showerror("Error", "Folder is empty or no images found!")
             return
 
         self.folders_data = []
@@ -271,12 +271,12 @@ class SortirFotoApp(ctk.CTk):
                     try:
                         os.makedirs(full_path)
                     except OSError as e:
-                        messagebox.showerror("Error", f"Gagal membuat folder {name}: {e}")
+                        messagebox.showerror("Error", f"Failed to create folder {name}: {e}")
                         return
                 self.folders_data.append({"name": name, "path": full_path})
         
         if not self.folders_data:
-            messagebox.showerror("Error", "Minimal buat 1 folder tujuan!")
+            messagebox.showerror("Error", "Create at least 1 destination folder!")
             return
 
         self.shortcuts_data = []
@@ -290,13 +290,13 @@ class SortirFotoApp(ctk.CTk):
                     self.shortcuts_data.append({"key": key, "targets": valid_indices})
 
         if not self.shortcuts_data:
-            messagebox.showerror("Error", "Atur minimal 1 tombol shortcut!")
+            messagebox.showerror("Error", "Set at least 1 shortcut key!")
             return
 
         self.init_sorting_page()
 
     # ==========================================
-    # HALAMAN 2: SORTIR (DESIGN OVERHAUL)
+    # PAGE 2: SORTING (DESIGN OVERHAUL)
     # ==========================================
     def init_sorting_page(self):
         self.clear_frame(self.main_scroll)
@@ -307,11 +307,11 @@ class SortirFotoApp(ctk.CTk):
         container = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
         container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Kolom Kiri: Image Viewer
+        # Left Column: Image Viewer
         left_col = ctk.CTkFrame(container, fg_color="#18181b", corner_radius=15)
         left_col.pack(side="left", fill="both", expand=True, padx=(0, 20))
         
-        # Header Info File
+        # File Info Header
         self.info_frame = ctk.CTkFrame(left_col, fg_color="#27272a", height=50, corner_radius=10)
         self.info_frame.pack(fill="x", padx=10, pady=10)
         
@@ -336,26 +336,26 @@ class SortirFotoApp(ctk.CTk):
             width=200, height=40
         )
 
-        # Kolom Kanan: Kontrol & Shortcut
+        # Right Column: Controls & Shortcut
         right_col = ctk.CTkFrame(container, fg_color="transparent", width=300)
         right_col.pack(side="right", fill="y")
 
-        # Navigasi
+        # Navigation
         nav_card = ctk.CTkFrame(right_col, fg_color=COLOR_SURFACE, corner_radius=10)
         nav_card.pack(fill="x", pady=(0, 20), ipady=10)
         
-        ctk.CTkLabel(nav_card, text="Navigasi", font=("Segoe UI", 12, "bold"), text_color="gray").pack(pady=5)
+        ctk.CTkLabel(nav_card, text="Navigation", font=("Segoe UI", 12, "bold"), text_color="gray").pack(pady=5)
         nav_btns = ctk.CTkFrame(nav_card, fg_color="transparent")
         nav_btns.pack()
         
         ctk.CTkButton(nav_btns, text="← Prev", command=self.prev_image, width=80, fg_color="#E2E8F0", text_color="black", hover_color="#CBD5E1").pack(side="left", padx=5)
         ctk.CTkButton(nav_btns, text="Next →", command=self.next_image, width=80, fg_color="#E2E8F0", text_color="black", hover_color="#CBD5E1").pack(side="left", padx=5)
 
-        # Grid Shortcut
+        # Shortcut Grid
         shortcut_card = ctk.CTkFrame(right_col, fg_color=COLOR_SURFACE, corner_radius=10)
         shortcut_card.pack(fill="both", expand=True, ipady=10)
         
-        ctk.CTkLabel(shortcut_card, text="SHORTCUT KEYBOARD", font=("Segoe UI", 14, "bold"), text_color=COLOR_PRIMARY).pack(pady=15)
+        ctk.CTkLabel(shortcut_card, text="KEYBOARD SHORTCUTS", font=("Segoe UI", 14, "bold"), text_color=COLOR_PRIMARY).pack(pady=15)
 
         self.buttons_frame = ctk.CTkScrollableFrame(shortcut_card, fg_color="transparent")
         self.buttons_frame.pack(fill="both", expand=True, padx=10)
@@ -377,7 +377,7 @@ class SortirFotoApp(ctk.CTk):
             info_container = ctk.CTkFrame(btn_frame, fg_color="transparent")
             info_container.pack(side="left", padx=10, fill="x", expand=True)
             
-            ctk.CTkLabel(info_container, text="Simpan ke:", font=("Segoe UI", 10), text_color="gray").pack(anchor="w")
+            ctk.CTkLabel(info_container, text="Save to:", font=("Segoe UI", 10), text_color="gray").pack(anchor="w")
             ctk.CTkLabel(info_container, text=desc, font=("Segoe UI", 12, "bold"), text_color=COLOR_TEXT, wraplength=150, justify="left").pack(anchor="w")
 
             btn_frame.bind("<Button-1>", lambda e, k=s_data["key"]: self.execute_sort(k))
@@ -437,10 +437,10 @@ class SortirFotoApp(ctk.CTk):
                 shutil.copy2(src_path, dest_path)
                 success_list.append(dest_folder_info["name"])
             except Exception as e:
-                print(f"Gagal copy ke {dest_folder_info['name']}: {e}")
+                print(f"Failed to copy to {dest_folder_info['name']}: {e}")
 
         folder_names = ', '.join(success_list)
-        self.show_toast(f"Disimpan ke: {folder_names}")
+        self.show_toast(f"Saved to: {folder_names}")
         
         self.next_image()
 
@@ -457,13 +457,13 @@ class SortirFotoApp(ctk.CTk):
             self.load_image()
 
     # ==========================================
-    # LOGIKA END SESSION (FINISH)
+    # END SESSION LOGIC (FINISH)
     # ==========================================
     def end_session(self):
-        self.unbind("<Key>") # Matikan shortcut
-        self.clear_frame(self.main_scroll) # Bersihkan UI Sortir
+        self.unbind("<Key>") # Disable shortcuts
+        self.clear_frame(self.main_scroll) # Clear sorting UI
         
-        # Buat Halaman "Selesai"
+        # Create "Finished" Page
         finish_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
         finish_frame.pack(fill="both", expand=True, pady=100)
         
@@ -471,23 +471,23 @@ class SortirFotoApp(ctk.CTk):
         
         ctk.CTkLabel(
             finish_frame, 
-            text="Penyortiran Selesai!", 
+            text="Sorting Complete!", 
             font=("Segoe UI", 32, "bold"), 
             text_color=COLOR_PRIMARY
         ).pack(pady=10)
         
         ctk.CTkLabel(
             finish_frame, 
-            text=f"Semua foto dalam folder telah berhasil disortir.", 
+            text=f"All photos in the folder have been successfully sorted.", 
             font=("Segoe UI", 16), 
             text_color="gray"
         ).pack(pady=5)
         
-        # Tombol Kembali ke Utama
+        # Return to Main Menu Button
         ctk.CTkButton(
             finish_frame,
-            text="Kembali ke Menu Utama",
-            command=self.init_config_page, # Panggil ulang setup page
+            text="Return to Main Menu",
+            command=self.init_config_page, # Call setup page again
             font=("Segoe UI", 16, "bold"),
             height=50,
             width=250,
