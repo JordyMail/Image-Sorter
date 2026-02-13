@@ -4,29 +4,6 @@ Image-sorter is a desktop application designed to streamline the process of orga
 
 ---
 
-## Technical Stack
-
-The application is built using the following tools and libraries:
-
-* **Python 3.x**: Core programming language.
-* **CustomTkinter**: For the modern, responsive graphical user interface.
-* **Pillow (PIL)**: For image processing and displaying previews.
-* **OS & Shutil**: For file system management and file copying operations.
-* **Tkinter**: For native system dialogs and message alerts.
-
----
-
-## Key Functions
-
-* **Source Folder Selection**: Choose the directory containing the images to be organized.
-* **Category Management**: Create multiple destination labels and map them to specific directory paths.
-* **Keyboard Mapping**: Link specific keys (e.g., 'A', 'S', 'D') to one or more destination categories.
-* **Live Image Preview**: View images with automatic aspect ratio scaling before sorting.
-* **Batch Copying**: Pressing a shortcut key copies the current image to all assigned folders simultaneously.
-* **Navigation Control**: Manual "Next" and "Previous" buttons to skip or review images.
-
----
-
 ## Installation
 
 Ensure you have Python installed on your system. You can then install the necessary dependencies using pip:
