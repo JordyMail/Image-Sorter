@@ -1,464 +1,365 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 import os
 import shutil
-from PIL import Image, ImageTk
-import json
-import keyboard
-from pathlib import Path
+from PIL import Image
 
-class ImageSorterApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Aplikasi Penyortir Gambar")
-        self.root.geometry("1200x800")
-        
-        # Variabel untuk menyimpan data
+# --- Konfigurasi Tema & Warna ---
+ctk.set_appearance_mode("Light")  # Mode terang (Dominan Putih)
+ctk.set_default_color_theme("dark-blue") 
+
+# Kode Warna Navy
+NAVY_COLOR = "#001F3F"
+NAVY_HOVER = "#003366"
+WHITE_BG = "#FFFFFF"
+
+class SortirFotoApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("Aplikasi Sortir Gambar Modern")
+        self.geometry("1000x700")
+        self.configure(fg_color=WHITE_BG)
+
+        # Variabel Data
         self.source_folder = ""
-        self.destination_folders = []
         self.image_files = []
         self.current_image_index = 0
-        self.folder_configs = []
-        self.shortcut_configs = {}
         
-        # Setup UI
-        self.setup_ui()
+        # Struktur Data: 
+        # folders = [{"name": "Folder A", "path": "C:/..."}, ...]
+        self.folders_data = [] 
+        # shortcuts = [{"key": "1", "targets": [0, 1]}] (targets adalah index dari folders_data)
+        self.shortcuts_data = []
+
+        # Container Utama (Scrollable agar responsif di layar kecil)
+        self.main_scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.main_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Mulai dengan Halaman Konfigurasi
+        self.init_config_page()
+
+    # ==========================================
+    # HALAMAN 1: KONFIGURASI (SETUP)
+    # ==========================================
+    def init_config_page(self):
+        self.clear_frame(self.main_scroll)
         
-    def setup_ui(self):
-        # Frame untuk konfigurasi awal
-        self.config_frame = ttk.LabelFrame(self.root, text="Konfigurasi Awal", padding=10)
-        self.config_frame.pack(fill="x", padx=10, pady=5)
+        # Header
+        lbl_title = ctk.CTkLabel(self.main_scroll, text="Setup Sortir Foto", 
+                                 font=("Roboto", 24, "bold"), text_color=NAVY_COLOR)
+        lbl_title.pack(pady=20)
+
+        # 1. Pilih Source Folder
+        self.btn_source = ctk.CTkButton(self.main_scroll, text="Pilih Folder Sumber Foto", 
+                                        command=self.select_source_folder,
+                                        fg_color=NAVY_COLOR, hover_color=NAVY_HOVER)
+        self.btn_source.pack(pady=10)
         
-        # Tombol pilih folder sumber
-        ttk.Button(self.config_frame, text="Pilih Folder Foto", 
-                  command=self.select_source_folder).grid(row=0, column=0, padx=5, pady=5)
+        self.lbl_source_path = ctk.CTkLabel(self.main_scroll, text="Belum ada folder dipilih", text_color="gray")
+        self.lbl_source_path.pack(pady=(0, 20))
+
+        ctk.CTkFrame(self.main_scroll, height=2, fg_color="lightgray").pack(fill="x", padx=50, pady=10)
+
+        # 2. Setup Folder Tujuan
+        ctk.CTkLabel(self.main_scroll, text="Langkah 1: Buat Folder Tujuan", font=("Roboto", 18, "bold"), text_color=NAVY_COLOR).pack(pady=10)
         
-        self.source_label = ttk.Label(self.config_frame, text="Belum ada folder dipilih")
-        self.source_label.grid(row=0, column=1, padx=5, pady=5)
+        self.folder_container = ctk.CTkFrame(self.main_scroll, fg_color="#F0F0F0")
+        self.folder_container.pack(fill="x", padx=20, pady=10)
         
-        # Frame untuk konfigurasi folder tujuan
-        self.dest_frame = ttk.LabelFrame(self.root, text="Konfigurasi Folder Tujuan", padding=10)
-        self.dest_frame.pack(fill="x", padx=10, pady=5)
+        self.folder_entries = [] # Menyimpan widget input folder
         
-        ttk.Label(self.dest_frame, text="Jumlah Folder:").grid(row=0, column=0, padx=5, pady=5)
-        self.folder_count = tk.IntVar(value=2)
-        ttk.Spinbox(self.dest_frame, from_=1, to=10, textvariable=self.folder_count, 
-                   width=10).grid(row=0, column=1, padx=5, pady=5)
-        ttk.Button(self.dest_frame, text="Buat Konfigurasi", 
-                  command=self.create_folder_config).grid(row=0, column=2, padx=5, pady=5)
+        btn_add_folder = ctk.CTkButton(self.main_scroll, text="+ Tambah Folder Tujuan", 
+                                       command=self.add_folder_row,
+                                       fg_color="gray", hover_color="darkgray")
+        btn_add_folder.pack(pady=5)
+
+        ctk.CTkFrame(self.main_scroll, height=2, fg_color="lightgray").pack(fill="x", padx=50, pady=20)
+
+        # 3. Setup Shortcut Tombol
+        ctk.CTkLabel(self.main_scroll, text="Langkah 2: Atur Fungsi Tombol/Shortcut", font=("Roboto", 18, "bold"), text_color=NAVY_COLOR).pack(pady=10)
+        ctk.CTkLabel(self.main_scroll, text="Contoh: Tekan '1' simpan ke Folder A, Tekan '2' simpan ke Folder A & B", text_color="gray").pack()
+
+        self.shortcut_container = ctk.CTkFrame(self.main_scroll, fg_color="#F0F0F0")
+        self.shortcut_container.pack(fill="x", padx=20, pady=10)
+
+        self.shortcut_rows = [] # Menyimpan widget shortcut
+
+        btn_add_shortcut = ctk.CTkButton(self.main_scroll, text="+ Tambah Tombol Shortcut", 
+                                         command=self.add_shortcut_row,
+                                         fg_color="gray", hover_color="darkgray")
+        btn_add_shortcut.pack(pady=5)
+
+        # Tombol Mulai
+        ctk.CTkFrame(self.main_scroll, height=2, fg_color="lightgray").pack(fill="x", padx=50, pady=30)
+        self.btn_start = ctk.CTkButton(self.main_scroll, text="MULAI MENYORTIR", 
+                                       command=self.start_sorting_process,
+                                       font=("Roboto", 16, "bold"),
+                                       height=50,
+                                       fg_color=NAVY_COLOR, hover_color=NAVY_HOVER)
+        self.btn_start.pack(pady=30, fill="x", padx=100)
+
+        # Tambah baris awal default
+        self.add_folder_row()
+        self.add_shortcut_row()
+
+    # --- Logika Setup Folder ---
+    def add_folder_row(self):
+        row_frame = ctk.CTkFrame(self.folder_container, fg_color="transparent")
+        row_frame.pack(fill="x", pady=2)
         
-        # Frame untuk konfigurasi fungsi tombol
-        self.function_frame = ttk.LabelFrame(self.root, text="Konfigurasi Fungsi Tombol", padding=10)
-        self.function_frame.pack(fill="x", padx=10, pady=5)
+        entry_name = ctk.CTkEntry(row_frame, placeholder_text="Nama Label Folder (misal: Folder A)", width=200)
+        entry_name.pack(side="left", padx=5)
         
-        # Frame untuk menampilkan gambar
-        self.image_frame = ttk.LabelFrame(self.root, text="Preview Gambar", padding=10)
-        self.image_frame.pack(expand=True, fill="both", padx=10, pady=5)
+        entry_path = ctk.CTkEntry(row_frame, placeholder_text="Lokasi Simpan", width=300)
+        entry_path.pack(side="left", padx=5)
         
-        self.image_label = ttk.Label(self.image_frame, text="Silakan pilih folder foto terlebih dahulu")
-        self.image_label.pack(expand=True, fill="both")
+        def browse_dest():
+            d = filedialog.askdirectory()
+            if d:
+                entry_path.delete(0, "end")
+                entry_path.insert(0, d)
+
+        btn_browse = ctk.CTkButton(row_frame, text="Pilih Lokasi", width=80, command=browse_dest, fg_color=NAVY_COLOR)
+        btn_browse.pack(side="left", padx=5)
+
+        self.folder_entries.append({"name": entry_name, "path": entry_path, "frame": row_frame})
+
+    # --- Logika Setup Shortcut ---
+    def add_shortcut_row(self):
+        row_frame = ctk.CTkFrame(self.shortcut_container, fg_color="transparent", border_width=1, border_color="#DDD")
+        row_frame.pack(fill="x", pady=5, padx=5)
         
-        # Frame untuk informasi gambar
-        self.info_frame = ttk.Frame(self.image_frame)
-        self.info_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(row_frame, text="Tombol Keyboard:").pack(side="left", padx=5)
+        entry_key = ctk.CTkEntry(row_frame, width=50, placeholder_text="1")
+        entry_key.pack(side="left", padx=5)
         
-        self.image_info_label = ttk.Label(self.info_frame, text="")
-        self.image_info_label.pack()
+        ctk.CTkLabel(row_frame, text="Akan menyimpan ke:").pack(side="left", padx=10)
         
-        # Frame untuk tombol aksi
-        self.action_frame = ttk.LabelFrame(self.root, text="Tombol Aksi", padding=10)
-        self.action_frame.pack(fill="x", padx=10, pady=5)
+        # Checkboxes area (akan diisi nanti saat tombol refresh ditekan atau saat start, 
+        # tapi untuk dinamis kita buat placeholder text dulu)
+        lbl_info = ctk.CTkLabel(row_frame, text="(Folder diambil dari langkah 1 diatas)", text_color="gray", font=("Arial", 10))
+        lbl_info.pack(side="left")
         
-        # Status bar
-        self.status_bar = ttk.Label(self.root, text="Siap", relief=tk.SUNKEN)
-        self.status_bar.pack(fill="x", padx=10, pady=5)
+        # Kita simpan referensi row ini
+        self.shortcut_rows.append({"key": entry_key, "frame": row_frame, "checks": []})
         
+        # Update checkbox berdasarkan folder yang ada saat ini
+        self.refresh_shortcut_options()
+
+    def refresh_shortcut_options(self):
+        # Update pilihan folder di setiap baris shortcut
+        current_folders = [e["name"].get() for e in self.folder_entries]
+        
+        for row in self.shortcut_rows:
+            # Hapus checkbox lama
+            for widget in row["frame"].winfo_children():
+                if isinstance(widget, ctk.CTkCheckBox):
+                    widget.destroy()
+            
+            row["checks"] = []
+            for i, folder_name in enumerate(current_folders):
+                name_display = folder_name if folder_name else f"Folder {i+1}"
+                chk = ctk.CTkCheckBox(row["frame"], text=name_display, fg_color=NAVY_COLOR)
+                chk.pack(side="left", padx=5)
+                row["checks"].append(chk)
+
     def select_source_folder(self):
-        folder = filedialog.askdirectory(title="Pilih Folder yang Berisi Foto")
-        if folder:
-            self.source_folder = folder
-            self.source_label.config(text=f"Folder: {folder}")
-            self.load_images()
-            self.update_status(f"Folder sumber: {folder}")
-    
-    def load_images(self):
-        """Muat semua file gambar dari folder sumber"""
-        extensions = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp')
-        self.image_files = []
+        path = filedialog.askdirectory()
+        if path:
+            self.source_folder = path
+            self.lbl_source_path.configure(text=path)
+
+    # ==========================================
+    # LOGIKA START & VALIDASI
+    # ==========================================
+    def start_sorting_process(self):
+        # 1. Validasi Source
+        if not self.source_folder:
+            messagebox.showerror("Error", "Pilih folder sumber foto dulu!")
+            return
+
+        # 2. Ambil List Foto
+        valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.gif')
+        self.image_files = [f for f in os.listdir(self.source_folder) if f.lower().endswith(valid_extensions)]
+        self.image_files.sort()
         
-        try:
-            for file in os.listdir(self.source_folder):
-                if file.lower().endswith(extensions):
-                    self.image_files.append(os.path.join(self.source_folder, file))
+        if not self.image_files:
+            messagebox.showerror("Error", "Folder kosong atau tidak ada gambar!")
+            return
+
+        # 3. Validasi & Buat Folder Tujuan
+        self.folders_data = []
+        for entry in self.folder_entries:
+            name = entry["name"].get()
+            path = entry["path"].get()
+            if name and path:
+                full_path = os.path.join(path, name)
+                if not os.path.exists(full_path):
+                    try:
+                        os.makedirs(full_path)
+                    except OSError as e:
+                        messagebox.showerror("Error", f"Gagal membuat folder {name}: {e}")
+                        return
+                self.folders_data.append({"name": name, "path": full_path})
+        
+        if not self.folders_data:
+            messagebox.showerror("Error", "Minimal buat 1 folder tujuan!")
+            return
+
+        # 4. Validasi Shortcuts
+        self.shortcuts_data = []
+        for row in self.shortcut_rows:
+            key = row["key"].get().lower()
+            selected_indices = [i for i, chk in enumerate(row["checks"]) if chk.get() == 1]
             
-            self.image_files.sort()
-            self.current_image_index = 0
+            if key and selected_indices:
+                # Validasi index folder (jika user menghapus baris folder tp checkbox masih ada)
+                valid_indices = [i for i in selected_indices if i < len(self.folders_data)]
+                if valid_indices:
+                    self.shortcuts_data.append({"key": key, "targets": valid_indices})
+
+        if not self.shortcuts_data:
+            messagebox.showerror("Error", "Atur minimal 1 tombol shortcut!")
+            return
+
+        # Masuk ke Halaman Sortir
+        self.init_sorting_page()
+
+    # ==========================================
+    # HALAMAN 2: SORTIR (MAIN UI)
+    # ==========================================
+    def init_sorting_page(self):
+        self.clear_frame(self.main_scroll)
+        self.current_image_index = 0
+        
+        # Bind Keyboard Events
+        self.bind("<Key>", self.handle_keypress)
+
+        # Layout Grid
+        self.main_scroll.grid_columnconfigure(0, weight=1)
+
+        # 1. Area Gambar
+        self.image_label = ctk.CTkLabel(self.main_scroll, text="")
+        self.image_label.pack(pady=10, padx=10, expand=True)
+
+        # 2. Info File
+        self.file_info_label = ctk.CTkLabel(self.main_scroll, text="Nama File", font=("Roboto", 14))
+        self.file_info_label.pack(pady=5)
+
+        # 3. Kontrol Navigasi
+        nav_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
+        nav_frame.pack(pady=10)
+        
+        ctk.CTkButton(nav_frame, text="< Sebelumnya", command=self.prev_image, fg_color="gray").pack(side="left", padx=10)
+        ctk.CTkButton(nav_frame, text="Lewati / Selanjutnya >", command=self.next_image, fg_color="gray").pack(side="left", padx=10)
+
+        # 4. Panel Tombol Shortcut (Visual Guide)
+        shortcut_frame = ctk.CTkFrame(self.main_scroll, fg_color="#F0F0F0")
+        shortcut_frame.pack(fill="x", padx=20, pady=20)
+        
+        ctk.CTkLabel(shortcut_frame, text="Shortcut Tersedia:", font=("Roboto", 14, "bold")).pack(pady=5)
+        
+        # Buat grid tombol visual
+        grid_frame = ctk.CTkFrame(shortcut_frame, fg_color="transparent")
+        grid_frame.pack(pady=10)
+        
+        for s_data in self.shortcuts_data:
+            key = s_data["key"].upper()
+            # Ambil nama folder target
+            target_names = [self.folders_data[i]["name"] for i in s_data["targets"]]
+            desc = " & ".join(target_names)
             
-            if self.image_files:
-                self.show_current_image()
-                self.update_status(f"Ditemukan {len(self.image_files)} gambar")
-            else:
-                self.image_label.config(text="Tidak ada gambar ditemukan dalam folder")
-                self.update_status("Tidak ada gambar ditemukan")
+            btn_text = f"[{key}]\nSimpan ke:\n{desc}"
+            
+            # Tombol ini juga bisa diklik selain ditekan di keyboard
+            btn = ctk.CTkButton(grid_frame, text=btn_text, 
+                                command=lambda k=s_data["key"]: self.execute_sort(k),
+                                width=150, height=60,
+                                fg_color=NAVY_COLOR, hover_color=NAVY_HOVER)
+            btn.pack(side="left", padx=10, pady=5)
+
+        self.load_image()
+
+    def load_image(self):
+        if 0 <= self.current_image_index < len(self.image_files):
+            file_name = self.image_files[self.current_image_index]
+            file_path = os.path.join(self.source_folder, file_name)
+            
+            # Update Info
+            self.file_info_label.configure(text=f"[{self.current_image_index + 1}/{len(self.image_files)}] {file_name}")
+            
+            # Load & Resize Image
+            try:
+                img = Image.open(file_path)
                 
-        except Exception as e:
-            messagebox.showerror("Error", f"Gagal memuat gambar: {str(e)}")
-    
-    def create_folder_config(self):
-        """Membuat konfigurasi folder tujuan"""
-        count = self.folder_count.get()
-        self.destination_folders = []
-        self.folder_configs = []
-        
-        # Buat dialog untuk memilih folder
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Pilih Folder Tujuan")
-        dialog.geometry("600x400")
-        
-        ttk.Label(dialog, text=f"Pilih {count} folder tujuan:", 
-                 font=("Arial", 12)).pack(pady=10)
-        
-        frame = ttk.Frame(dialog)
-        frame.pack(fill="both", expand=True, padx=20, pady=10)
-        
-        folder_entries = []
-        
-        for i in range(count):
-            ttk.Label(frame, text=f"Folder {chr(65+i)}:").grid(row=i, column=0, padx=5, pady=5, sticky="w")
-            
-            entry = ttk.Entry(frame, width=40)
-            entry.grid(row=i, column=1, padx=5, pady=5)
-            folder_entries.append(entry)
-            
-            ttk.Button(frame, text="Browse", 
-                      command=lambda e=entry: self.browse_folder(e)).grid(row=i, column=2, padx=5, pady=5)
-        
-        ttk.Button(dialog, text="Simpan Konfigurasi", 
-                  command=lambda: self.save_folder_config(dialog, folder_entries)).pack(pady=20)
-        
-        # Reset konfigurasi shortcut sebelumnya
-        self.shortcut_configs = {}
-        
-    def browse_folder(self, entry):
-        """Membuka dialog untuk memilih folder"""
-        folder = filedialog.askdirectory(title="Pilih Folder")
-        if folder:
-            entry.delete(0, tk.END)
-            entry.insert(0, folder)
-    
-    def save_folder_config(self, dialog, entries):
-        """Menyimpan konfigurasi folder tujuan"""
-        self.destination_folders = []
-        self.folder_configs = []
-        
-        for i, entry in enumerate(entries):
-            folder_path = entry.get().strip()
-            if folder_path:
-                if os.path.exists(folder_path):
-                    folder_name = f"Folder {chr(65+i)}"
-                    self.destination_folders.append((folder_name, folder_path))
-                    self.folder_configs.append({
-                        'name': folder_name,
-                        'path': folder_path,
-                        'shortcut': str(i+1)
-                    })
-                else:
-                    messagebox.showerror("Error", f"Folder {folder_path} tidak ditemukan!")
-                    return
-            else:
-                messagebox.showerror("Error", f"Folder {chr(65+i)} belum dipilih!")
-                return
-        
-        dialog.destroy()
-        self.create_button_config()
-        self.update_status(f"Berhasil mengkonfigurasi {len(self.destination_folders)} folder tujuan")
-    
-    def create_button_config(self):
-        """Membuat konfigurasi fungsi tombol"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Konfigurasi Fungsi Tombol")
-        dialog.geometry("800x600")
-        
-        ttk.Label(dialog, text="Konfigurasi Fungsi Tombol Keyboard", 
-                 font=("Arial", 14)).pack(pady=10)
-        
-        # Frame untuk daftar tombol
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(fill="both", expand=True, padx=20, pady=10)
-        
-        # Buat konfigurasi tombol default
-        self.button_configs = []
-        
-        # Tombol untuk masing-masing folder
-        for i, (folder_name, folder_path) in enumerate(self.destination_folders):
-            config = {
-                'id': len(self.button_configs) + 1,
-                'name': f"Tombol {len(self.button_configs) + 1}",
-                'shortcut': str(len(self.button_configs) + 1),
-                'action': [folder_name],
-                'description': f"Simpan ke {folder_name}"
-            }
-            self.button_configs.append(config)
-        
-        # Tombol untuk kombinasi
-        if len(self.destination_folders) >= 2:
-            # Semua folder
-            all_folders = [f[0] for f in self.destination_folders]
-            config = {
-                'id': len(self.button_configs) + 1,
-                'name': f"Tombol {len(self.button_configs) + 1}",
-                'shortcut': str(len(self.button_configs) + 1),
-                'action': all_folders,
-                'description': f"Simpan ke semua folder"
-            }
-            self.button_configs.append(config)
-            
-            # Kombinasi folder pertama dan kedua
-            if len(self.destination_folders) >= 2:
-                config = {
-                    'id': len(self.button_configs) + 1,
-                    'name': f"Tombol {len(self.button_configs) + 1}",
-                    'shortcut': str(len(self.button_configs) + 1),
-                    'action': [self.destination_folders[0][0], self.destination_folders[1][0]],
-                    'description': f"Simpan ke {self.destination_folders[0][0]} dan {self.destination_folders[1][0]}"
-                }
-                self.button_configs.append(config)
-            
-            # Kombinasi folder kedua dan ketiga
-            if len(self.destination_folders) >= 3:
-                config = {
-                    'id': len(self.button_configs) + 1,
-                    'name': f"Tombol {len(self.button_configs) + 1}",
-                    'shortcut': str(len(self.button_configs) + 1),
-                    'action': [self.destination_folders[1][0], self.destination_folders[2][0]],
-                    'description': f"Simpan ke {self.destination_folders[1][0]} dan {self.destination_folders[2][0]}"
-                }
-                self.button_configs.append(config)
-        
-        # Tampilkan konfigurasi yang dapat diedit
-        columns = ('ID', 'Shortcut', 'Deskripsi', 'Aksi')
-        tree = ttk.Treeview(button_frame, columns=columns, show='headings', height=10)
-        
-        for col in columns:
-            tree.heading(col, text=col)
-            tree.column(col, width=150)
-        
-        tree.pack(side=tk.LEFT, fill="both", expand=True)
-        
-        scrollbar = ttk.Scrollbar(button_frame, orient=tk.VERTICAL, command=tree.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        tree.configure(yscrollcommand=scrollbar.set)
-        
-        # Isi data
-        for config in self.button_configs:
-            tree.insert('', tk.END, values=(
-                config['id'],
-                config['shortcut'],
-                config['description'],
-                ', '.join(config['action'])
-            ))
-        
-        # Frame untuk menambah konfigurasi custom
-        custom_frame = ttk.LabelFrame(dialog, text="Tambah Konfigurasi Custom", padding=10)
-        custom_frame.pack(fill="x", padx=20, pady=10)
-        
-        ttk.Label(custom_frame, text="Pilih folder tujuan:").grid(row=0, column=0, padx=5, pady=5)
-        
-        # Variabel untuk checkbox
-        self.folder_vars = []
-        for i, (folder_name, folder_path) in enumerate(self.destination_folders):
-            var = tk.BooleanVar()
-            cb = ttk.Checkbutton(custom_frame, text=folder_name, variable=var)
-            cb.grid(row=i+1, column=0, sticky="w", padx=20)
-            self.folder_vars.append((folder_name, var))
-        
-        ttk.Label(custom_frame, text="Shortcut keyboard:").grid(row=0, column=1, padx=5, pady=5)
-        shortcut_entry = ttk.Entry(custom_frame, width=10)
-        shortcut_entry.grid(row=1, column=1, padx=5, pady=5)
-        
-        ttk.Button(custom_frame, text="Tambah Konfigurasi", 
-                  command=lambda: self.add_custom_config(shortcut_entry, tree)).grid(row=2, column=1, padx=5, pady=5)
-        
-        ttk.Button(dialog, text="Simpan Konfigurasi Tombol", 
-                  command=lambda: self.save_button_config(dialog)).pack(pady=20)
-    
-    def add_custom_config(self, shortcut_entry, tree):
-        """Menambah konfigurasi custom"""
-        selected_folders = []
-        for folder_name, var in self.folder_vars:
-            if var.get():
-                selected_folders.append(folder_name)
-        
-        if not selected_folders:
-            messagebox.showwarning("Peringatan", "Pilih minimal satu folder tujuan!")
-            return
-        
-        shortcut = shortcut_entry.get().strip()
-        if not shortcut:
-            messagebox.showwarning("Peringatan", "Masukkan shortcut keyboard!")
-            return
-        
-        # Cek duplikasi shortcut
-        for config in self.button_configs:
-            if config['shortcut'] == shortcut:
-                messagebox.showwarning("Peringatan", f"Shortcut '{shortcut}' sudah digunakan!")
-                return
-        
-        config = {
-            'id': len(self.button_configs) + 1,
-            'name': f"Tombol {len(self.button_configs) + 1}",
-            'shortcut': shortcut,
-            'action': selected_folders,
-            'description': f"Simpan ke {', '.join(selected_folders)}"
-        }
-        
-        self.button_configs.append(config)
-        
-        # Update tree
-        tree.insert('', tk.END, values=(
-            config['id'],
-            config['shortcut'],
-            config['description'],
-            ', '.join(config['action'])
-        ))
-        
-        shortcut_entry.delete(0, tk.END)
-        messagebox.showinfo("Sukses", "Konfigurasi custom berhasil ditambahkan!")
-    
-    def save_button_config(self, dialog):
-        """Menyimpan konfigurasi tombol dan mengaktifkan shortcut"""
-        # Hapus shortcut sebelumnya
-        try:
-            keyboard.unhook_all()
-        except:
-            pass
-        
-        # Setup shortcut baru
-        for config in self.button_configs:
-            shortcut = config['shortcut']
-            action = config['action']
+                # Hitung rasio resize agar muat di layar tapi tidak pecah
+                # Max height 500px
+                aspect_ratio = img.width / img.height
+                new_height = 500
+                new_width = int(new_height * aspect_ratio)
+                
+                my_image = ctk.CTkImage(light_image=img, dark_image=img, size=(new_width, new_height))
+                self.image_label.configure(image=my_image)
+            except Exception as e:
+                self.file_info_label.configure(text=f"Error loading image: {e}")
+        else:
+            self.end_session()
+
+    def handle_keypress(self, event):
+        key = event.char.lower()
+        # Cek apakah tombol yang ditekan ada di daftar shortcut
+        for s in self.shortcuts_data:
+            if s["key"] == key:
+                self.execute_sort(key)
+                break
+                
+    def execute_sort(self, key):
+        # Cari konfigurasi shortcut
+        shortcut = next((s for s in self.shortcuts_data if s["key"] == key), None)
+        if not shortcut: return
+
+        current_file = self.image_files[self.current_image_index]
+        src_path = os.path.join(self.source_folder, current_file)
+
+        # Lakukan penyalinan ke SEMUA folder target
+        success_list = []
+        for target_idx in shortcut["targets"]:
+            dest_folder_info = self.folders_data[target_idx]
+            dest_path = dest_folder_info["path"]
             
             try:
-                keyboard.add_hotkey(shortcut, lambda a=action: self.save_to_folders(a))
-                self.shortcut_configs[shortcut] = action
+                shutil.copy2(src_path, dest_path) # copy2 menjaga metadata
+                success_list.append(dest_folder_info["name"])
             except Exception as e:
-                print(f"Gagal setup shortcut {shortcut}: {e}")
+                print(f"Gagal copy ke {dest_folder_info['name']}: {e}")
+
+        # Feedback visual sebentar (opsional, bisa ditambah toast message)
+        print(f"Berhasil simpan {current_file} ke: {', '.join(success_list)}")
         
-        # Buat tombol GUI
-        for widget in self.action_frame.winfo_children():
-            widget.destroy()
-        
-        # Buat tombol berdasarkan konfigurasi
-        for i, config in enumerate(self.button_configs):
-            btn_text = f"{config['shortcut']}: {config['description']}"
-            btn = ttk.Button(self.action_frame, text=btn_text, 
-                           command=lambda a=config['action']: self.save_to_folders(a))
-            btn.grid(row=i//3, column=i%3, padx=5, pady=5, sticky="ew")
-        
-        dialog.destroy()
-        
-        self.update_status(f"Berhasil mengkonfigurasi {len(self.button_configs)} tombol shortcut")
-        messagebox.showinfo("Sukses", f"Konfigurasi tombol berhasil disimpan!\n\nShortcut keyboard:\n" + 
-                          "\n".join([f"Tombol {c['shortcut']}: {c['description']}" for c in self.button_configs]))
-    
-    def save_to_folders(self, folder_names):
-        """Menyimpan gambar ke folder yang dipilih"""
-        if not self.image_files or self.current_image_index >= len(self.image_files):
-            messagebox.showinfo("Info", "Tidak ada gambar untuk diproses")
-            return
-        
-        current_image = self.image_files[self.current_image_index]
-        filename = os.path.basename(current_image)
-        
-        saved_count = 0
-        for folder_name in folder_names:
-            # Cari path folder berdasarkan nama
-            dest_path = None
-            for name, path in self.destination_folders:
-                if name == folder_name:
-                    dest_path = path
-                    break
-            
-            if dest_path:
-                try:
-                    dest_file = os.path.join(dest_path, filename)
-                    shutil.copy2(current_image, dest_file)
-                    saved_count += 1
-                except Exception as e:
-                    print(f"Gagal menyimpan ke {folder_name}: {e}")
-        
-        if saved_count > 0:
-            self.update_status(f"✓ Berhasil menyimpan ke {saved_count} folder: {filename}")
-            self.next_image()
-        else:
-            self.update_status(f"✗ Gagal menyimpan: {filename}")
-    
+        # Slide otomatis (Requirement 5)
+        self.next_image()
+
     def next_image(self):
-        """Menampilkan gambar berikutnya"""
         if self.current_image_index < len(self.image_files) - 1:
             self.current_image_index += 1
-            self.show_current_image()
+            self.load_image()
         else:
-            self.update_status("✓ Selesai! Semua gambar telah diproses")
-            messagebox.showinfo("Selesai", "Semua gambar telah diproses!")
-    
-    def previous_image(self):
-        """Menampilkan gambar sebelumnya"""
+            self.end_session()
+
+    def prev_image(self):
         if self.current_image_index > 0:
             self.current_image_index -= 1
-            self.show_current_image()
-    
-    def show_current_image(self):
-        """Menampilkan gambar saat ini"""
-        if not self.image_files:
-            return
-        
-        try:
-            image_path = self.image_files[self.current_image_index]
-            filename = os.path.basename(image_path)
-            
-            # Buka dan resize gambar
-            image = Image.open(image_path)
-            
-            # Dapatkan ukuran frame
-            self.image_frame.update_idletasks()
-            frame_width = self.image_frame.winfo_width() - 50
-            frame_height = self.image_frame.winfo_height() - 100
-            
-            # Resize gambar
-            image.thumbnail((frame_width, frame_height), Image.Resampling.LANCZOS)
-            
-            photo = ImageTk.PhotoImage(image)
-            self.image_label.config(image=photo, text="")
-            self.image_label.image = photo
-            
-            # Update informasi
-            total_images = len(self.image_files)
-            self.image_info_label.config(
-                text=f"Gambar {self.current_image_index + 1} dari {total_images} | {filename}"
-            )
-            
-        except Exception as e:
-            self.image_label.config(text=f"Error memuat gambar: {str(e)}")
-    
-    def update_status(self, message):
-        """Update status bar"""
-        self.status_bar.config(text=message)
-        self.root.update_idletasks()
-    
-    def on_closing(self):
-        """Handler saat aplikasi ditutup"""
-        try:
-            keyboard.unhook_all()
-        except:
-            pass
-        self.root.destroy()
+            self.load_image()
 
-def main():
-    root = tk.Tk()
-    app = ImageSorterApp(root)
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    root.mainloop()
+    def end_session(self):
+        self.image_label.configure(image=None, text="SELESAI!\nSemua foto telah disortir.")
+        self.unbind("<Key>") # Matikan keyboard shortcut
+
+    def clear_frame(self, frame):
+        for widget in frame.winfo_children():
+            widget.destroy()
 
 if __name__ == "__main__":
-    main()
+    app = SortirFotoApp()
+    app.mainloop()
