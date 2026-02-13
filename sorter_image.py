@@ -3,41 +3,118 @@ from tkinter import filedialog, messagebox
 import os
 import shutil
 from PIL import Image
+from datetime import datetime
 
-# --- Konfigurasi Tema & Warna ---
-ctk.set_appearance_mode("Light")  # Mode terang (Dominan Putih)
-ctk.set_default_color_theme("dark-blue") 
+# --- Konfigurasi Tema & Warna Modern ---
+ctk.set_appearance_mode("Light")
+ctk.set_default_color_theme("blue")
 
-# Kode Warna Navy
-NAVY_COLOR = "#001F3F"
-NAVY_HOVER = "#003366"
-WHITE_BG = "#FFFFFF"
+# Palet Warna Modern
+PRIMARY_COLOR = "#2563eb"      # Biru cerah modern
+PRIMARY_HOVER = "#1d4ed8"      # Biru gelap hover
+SECONDARY_COLOR = "#64748b"    # Abu-abu slate
+SUCCESS_COLOR = "#10b981"      # Hijau
+WARNING_COLOR = "#f59e0b"      # Orange
+BG_COLOR = "#ffffff"           # Putih
+CARD_BG = "#f8fafc"           # Putih keabuan
+BORDER_COLOR = "#e2e8f0"      # Abu-abu border
+TEXT_DARK = "#0f172a"         # Hitam kebiruan
+TEXT_LIGHT = "#64748b"        # Abu-abu teks
+SHADOW_COLOR = "rgba(0,0,0,0.05)"  # Efek bayangan
+
+class ModernCard(ctk.CTkFrame):
+    """Frame dengan desain kartu modern"""
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.configure(
+            fg_color=CARD_BG,
+            border_width=1,
+            border_color=BORDER_COLOR,
+            corner_radius=12
+        )
 
 class SortirFotoApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Aplikasi Sortir Gambar Modern")
-        self.geometry("1000x700")
-        self.configure(fg_color=WHITE_BG)
+        self.title("SortirFoto Pro - Aplikasi Sortir Gambar Cerdas")
+        self.geometry("1200x800")
+        self.configure(fg_color=BG_COLOR)
+        
+        # Center window
+        self.center_window()
 
         # Variabel Data
         self.source_folder = ""
         self.image_files = []
         self.current_image_index = 0
         
-        # Struktur Data: 
-        # folders = [{"name": "Folder A", "path": "C:/..."}, ...]
+        # Struktur Data
         self.folders_data = [] 
-        # shortcuts = [{"key": "1", "targets": [0, 1]}] (targets adalah index dari folders_data)
         self.shortcuts_data = []
 
-        # Container Utama (Scrollable agar responsif di layar kecil)
-        self.main_scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.main_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        # Container Utama dengan padding konsisten
+        self.main_scroll = ctk.CTkScrollableFrame(
+            self, 
+            fg_color="transparent",
+            scrollbar_button_color=PRIMARY_COLOR,
+            scrollbar_button_hover_color=PRIMARY_HOVER
+        )
+        self.main_scroll.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Status Bar
+        self.status_bar = ctk.CTkLabel(
+            self, 
+            text="✨ Selamat datang di SortirFoto Pro", 
+            font=("Inter", 12),
+            text_color=TEXT_LIGHT,
+            fg_color=CARD_BG,
+            corner_radius=6,
+            height=30
+        )
+        self.status_bar.pack(side="bottom", fill="x", padx=20, pady=(0, 10))
 
         # Mulai dengan Halaman Konfigurasi
         self.init_config_page()
+
+    def center_window(self):
+        """Memposisikan window di tengah layar"""
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f'{width}x{height}+{x}+{y}')
+
+    def create_header(self, text, subtitle=None):
+        """Membuat header dengan desain modern"""
+        header_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(0, 20))
+        
+        # Garis dekoratif atas
+        top_line = ctk.CTkFrame(header_frame, height=4, width=60, fg_color=PRIMARY_COLOR, corner_radius=2)
+        top_line.pack(anchor="w", pady=(0, 10))
+        
+        lbl_title = ctk.CTkLabel(
+            header_frame, 
+            text=text, 
+            font=("Inter", 28, "bold"), 
+            text_color=TEXT_DARK,
+            anchor="w"
+        )
+        lbl_title.pack(anchor="w")
+        
+        if subtitle:
+            lbl_subtitle = ctk.CTkLabel(
+                header_frame, 
+                text=subtitle, 
+                font=("Inter", 14), 
+                text_color=TEXT_LIGHT,
+                anchor="w"
+            )
+            lbl_subtitle.pack(anchor="w", pady=(5, 0))
+        
+        return header_frame
 
     # ==========================================
     # HALAMAN 1: KONFIGURASI (SETUP)
@@ -45,73 +122,226 @@ class SortirFotoApp(ctk.CTk):
     def init_config_page(self):
         self.clear_frame(self.main_scroll)
         
-        # Header
-        lbl_title = ctk.CTkLabel(self.main_scroll, text="Setup Sortir Foto", 
-                                 font=("Roboto", 24, "bold"), text_color=NAVY_COLOR)
-        lbl_title.pack(pady=20)
+        # Header dengan desain modern
+        self.create_header(
+            "Setup Sortir Foto", 
+            "Konfigurasi folder sumber, folder tujuan, dan shortcut keyboard"
+        )
 
-        # 1. Pilih Source Folder
-        self.btn_source = ctk.CTkButton(self.main_scroll, text="Pilih Folder Sumber Foto", 
-                                        command=self.select_source_folder,
-                                        fg_color=NAVY_COLOR, hover_color=NAVY_HOVER)
-        self.btn_source.pack(pady=10)
+        # 1. Source Folder Card
+        source_card = ModernCard(self.main_scroll)
+        source_card.pack(fill="x", pady=10)
         
-        self.lbl_source_path = ctk.CTkLabel(self.main_scroll, text="Belum ada folder dipilih", text_color="gray")
-        self.lbl_source_path.pack(pady=(0, 20))
-
-        ctk.CTkFrame(self.main_scroll, height=2, fg_color="lightgray").pack(fill="x", padx=50, pady=10)
-
-        # 2. Setup Folder Tujuan
-        ctk.CTkLabel(self.main_scroll, text="Langkah 1: Buat Folder Tujuan", font=("Roboto", 18, "bold"), text_color=NAVY_COLOR).pack(pady=10)
+        # Icon dan judul section
+        section_header = ctk.CTkFrame(source_card, fg_color="transparent")
+        section_header.pack(fill="x", padx=20, pady=15)
         
-        self.folder_container = ctk.CTkFrame(self.main_scroll, fg_color="#F0F0F0")
+        ctk.CTkLabel(
+            section_header, 
+            text="📁", 
+            font=("Inter", 20)
+        ).pack(side="left", padx=(0, 10))
+        
+        ctk.CTkLabel(
+            section_header, 
+            text="Folder Sumber", 
+            font=("Inter", 16, "bold"), 
+            text_color=TEXT_DARK
+        ).pack(side="left")
+        
+        # Content
+        content_frame = ctk.CTkFrame(source_card, fg_color="transparent")
+        content_frame.pack(fill="x", padx=20, pady=(0, 20))
+        
+        self.btn_source = ctk.CTkButton(
+            content_frame, 
+            text="📂  Pilih Folder Sumber Foto", 
+            command=self.select_source_folder,
+            fg_color=PRIMARY_COLOR, 
+            hover_color=PRIMARY_HOVER,
+            height=45,
+            corner_radius=8,
+            font=("Inter", 13)
+        )
+        self.btn_source.pack(side="left", padx=(0, 15))
+        
+        self.lbl_source_path = ctk.CTkLabel(
+            content_frame, 
+            text="Belum ada folder dipilih", 
+            text_color=TEXT_LIGHT,
+            font=("Inter", 12)
+        )
+        self.lbl_source_path.pack(side="left")
+
+        # 2. Folder Tujuan Card
+        dest_card = ModernCard(self.main_scroll)
+        dest_card.pack(fill="x", pady=10)
+        
+        # Header dengan step indicator
+        step_header = ctk.CTkFrame(dest_card, fg_color="transparent")
+        step_header.pack(fill="x", padx=20, pady=15)
+        
+        step_badge = ctk.CTkFrame(step_header, fg_color=PRIMARY_COLOR, corner_radius=12, width=24, height=24)
+        step_badge.pack(side="left", padx=(0, 10))
+        step_badge.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            step_badge, 
+            text="1", 
+            font=("Inter", 12, "bold"), 
+            text_color="white"
+        ).pack(expand=True)
+        
+        ctk.CTkLabel(
+            step_header, 
+            text="Buat Folder Tujuan", 
+            font=("Inter", 16, "bold"), 
+            text_color=TEXT_DARK
+        ).pack(side="left")
+        
+        # Container folder entries
+        self.folder_container = ctk.CTkFrame(dest_card, fg_color="transparent")
         self.folder_container.pack(fill="x", padx=20, pady=10)
         
-        self.folder_entries = [] # Menyimpan widget input folder
+        self.folder_entries = []
         
-        btn_add_folder = ctk.CTkButton(self.main_scroll, text="+ Tambah Folder Tujuan", 
-                                       command=self.add_folder_row,
-                                       fg_color="gray", hover_color="darkgray")
-        btn_add_folder.pack(pady=5)
+        btn_add_folder = ctk.CTkButton(
+            dest_card, 
+            text="+  Tambah Folder Tujuan", 
+            command=self.add_folder_row,
+            fg_color="transparent",
+            text_color=PRIMARY_COLOR,
+            hover_color=CARD_BG,
+            border_width=2,
+            border_color=PRIMARY_COLOR,
+            height=40,
+            corner_radius=8,
+            font=("Inter", 12)
+        )
+        btn_add_folder.pack(pady=(0, 20), padx=20)
 
-        ctk.CTkFrame(self.main_scroll, height=2, fg_color="lightgray").pack(fill="x", padx=50, pady=20)
-
-        # 3. Setup Shortcut Tombol
-        ctk.CTkLabel(self.main_scroll, text="Langkah 2: Atur Fungsi Tombol/Shortcut", font=("Roboto", 18, "bold"), text_color=NAVY_COLOR).pack(pady=10)
-        ctk.CTkLabel(self.main_scroll, text="Contoh: Tekan '1' simpan ke Folder A, Tekan '2' simpan ke Folder A & B", text_color="gray").pack()
-
-        self.shortcut_container = ctk.CTkFrame(self.main_scroll, fg_color="#F0F0F0")
+        # 3. Shortcut Card
+        shortcut_card = ModernCard(self.main_scroll)
+        shortcut_card.pack(fill="x", pady=10)
+        
+        step_header = ctk.CTkFrame(shortcut_card, fg_color="transparent")
+        step_header.pack(fill="x", padx=20, pady=15)
+        
+        step_badge = ctk.CTkFrame(step_header, fg_color=PRIMARY_COLOR, corner_radius=12, width=24, height=24)
+        step_badge.pack(side="left", padx=(0, 10))
+        step_badge.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            step_badge, 
+            text="2", 
+            font=("Inter", 12, "bold"), 
+            text_color="white"
+        ).pack(expand=True)
+        
+        ctk.CTkLabel(
+            step_header, 
+            text="Atur Shortcut Keyboard", 
+            font=("Inter", 16, "bold"), 
+            text_color=TEXT_DARK
+        ).pack(side="left")
+        
+        info_text = ctk.CTkLabel(
+            shortcut_card,
+            text="💡 Tekan tombol keyboard untuk menyimpan gambar ke folder yang dipilih",
+            font=("Inter", 11),
+            text_color=TEXT_LIGHT,
+            fg_color="#f1f5f9",
+            corner_radius=6,
+            height=30
+        )
+        info_text.pack(padx=20, pady=(0, 10), fill="x")
+        
+        self.shortcut_container = ctk.CTkFrame(shortcut_card, fg_color="transparent")
         self.shortcut_container.pack(fill="x", padx=20, pady=10)
 
-        self.shortcut_rows = [] # Menyimpan widget shortcut
+        self.shortcut_rows = []
 
-        btn_add_shortcut = ctk.CTkButton(self.main_scroll, text="+ Tambah Tombol Shortcut", 
-                                         command=self.add_shortcut_row,
-                                         fg_color="gray", hover_color="darkgray")
-        btn_add_shortcut.pack(pady=5)
+        btn_add_shortcut = ctk.CTkButton(
+            shortcut_card, 
+            text="+  Tambah Shortcut", 
+            command=self.add_shortcut_row,
+            fg_color="transparent",
+            text_color=PRIMARY_COLOR,
+            hover_color=CARD_BG,
+            border_width=2,
+            border_color=PRIMARY_COLOR,
+            height=40,
+            corner_radius=8,
+            font=("Inter", 12)
+        )
+        btn_add_shortcut.pack(pady=(0, 20), padx=20)
 
         # Tombol Mulai
-        ctk.CTkFrame(self.main_scroll, height=2, fg_color="lightgray").pack(fill="x", padx=50, pady=30)
-        self.btn_start = ctk.CTkButton(self.main_scroll, text="MULAI MENYORTIR", 
-                                       command=self.start_sorting_process,
-                                       font=("Roboto", 16, "bold"),
-                                       height=50,
-                                       fg_color=NAVY_COLOR, hover_color=NAVY_HOVER)
-        self.btn_start.pack(pady=30, fill="x", padx=100)
+        button_container = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
+        button_container.pack(fill="x", pady=30)
+        
+        self.btn_start = ctk.CTkButton(
+            button_container, 
+            text="🚀  MULAI MENYORTIR", 
+            command=self.start_sorting_process,
+            font=("Inter", 16, "bold"),
+            height=55,
+            corner_radius=10,
+            fg_color=SUCCESS_COLOR, 
+            hover_color="#0d9488",
+            border_width=0
+        )
+        self.btn_start.pack(fill="x", ipady=5)
 
         # Tambah baris awal default
         self.add_folder_row()
         self.add_shortcut_row()
 
-    # --- Logika Setup Folder ---
     def add_folder_row(self):
+        """Menambah baris input folder dengan desain modern"""
         row_frame = ctk.CTkFrame(self.folder_container, fg_color="transparent")
-        row_frame.pack(fill="x", pady=2)
+        row_frame.pack(fill="x", pady=5)
         
-        entry_name = ctk.CTkEntry(row_frame, placeholder_text="Nama Label Folder (misal: Folder A)", width=200)
+        # Nomor urut
+        folder_number = len(self.folder_entries) + 1
+        
+        number_badge = ctk.CTkFrame(
+            row_frame, 
+            fg_color=BORDER_COLOR, 
+            corner_radius=6,
+            width=28,
+            height=28
+        )
+        number_badge.pack(side="left", padx=(0, 10))
+        number_badge.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            number_badge, 
+            text=str(folder_number), 
+            font=("Inter", 11, "bold"),
+            text_color=TEXT_DARK
+        ).pack(expand=True)
+        
+        entry_name = ctk.CTkEntry(
+            row_frame, 
+            placeholder_text="Nama folder (contoh: Produk)", 
+            width=200,
+            height=38,
+            corner_radius=8,
+            border_color=BORDER_COLOR,
+            font=("Inter", 12)
+        )
         entry_name.pack(side="left", padx=5)
         
-        entry_path = ctk.CTkEntry(row_frame, placeholder_text="Lokasi Simpan", width=300)
+        entry_path = ctk.CTkEntry(
+            row_frame, 
+            placeholder_text="Lokasi penyimpanan", 
+            width=300,
+            height=38,
+            corner_radius=8,
+            border_color=BORDER_COLOR,
+            font=("Inter", 12)
+        )
         entry_path.pack(side="left", padx=5)
         
         def browse_dest():
@@ -120,55 +350,127 @@ class SortirFotoApp(ctk.CTk):
                 entry_path.delete(0, "end")
                 entry_path.insert(0, d)
 
-        btn_browse = ctk.CTkButton(row_frame, text="Pilih Lokasi", width=80, command=browse_dest, fg_color=NAVY_COLOR)
+        btn_browse = ctk.CTkButton(
+            row_frame, 
+            text="📁  Pilih", 
+            width=80,
+            height=38,
+            command=browse_dest,
+            fg_color=SECONDARY_COLOR,
+            hover_color="#475569",
+            corner_radius=8,
+            font=("Inter", 11)
+        )
         btn_browse.pack(side="left", padx=5)
 
         self.folder_entries.append({"name": entry_name, "path": entry_path, "frame": row_frame})
+        self.refresh_shortcut_options()
 
-    # --- Logika Setup Shortcut ---
     def add_shortcut_row(self):
-        row_frame = ctk.CTkFrame(self.shortcut_container, fg_color="transparent", border_width=1, border_color="#DDD")
-        row_frame.pack(fill="x", pady=5, padx=5)
+        """Menambah baris shortcut dengan desain modern"""
+        row_frame = ctk.CTkFrame(
+            self.shortcut_container, 
+            fg_color=CARD_BG,
+            border_width=1, 
+            border_color=BORDER_COLOR,
+            corner_radius=10
+        )
+        row_frame.pack(fill="x", pady=8, padx=5)
         
-        ctk.CTkLabel(row_frame, text="Tombol Keyboard:").pack(side="left", padx=5)
-        entry_key = ctk.CTkEntry(row_frame, width=50, placeholder_text="1")
+        content_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+        content_frame.pack(fill="x", padx=15, pady=15)
+        
+        # Label tombol
+        ctk.CTkLabel(
+            content_frame, 
+            text="⌨️  Tekan tombol:", 
+            font=("Inter", 12),
+            text_color=TEXT_DARK
+        ).pack(side="left", padx=(0, 10))
+        
+        entry_key = ctk.CTkEntry(
+            content_frame, 
+            width=60,
+            height=38,
+            placeholder_text="1",
+            corner_radius=8,
+            border_color=BORDER_COLOR,
+            font=("Inter", 12),
+            justify="center"
+        )
         entry_key.pack(side="left", padx=5)
         
-        ctk.CTkLabel(row_frame, text="Akan menyimpan ke:").pack(side="left", padx=10)
+        ctk.CTkLabel(
+            content_frame, 
+            text="→  simpan ke:", 
+            font=("Inter", 12),
+            text_color=TEXT_DARK
+        ).pack(side="left", padx=(15, 10))
         
-        # Checkboxes area (akan diisi nanti saat tombol refresh ditekan atau saat start, 
-        # tapi untuk dinamis kita buat placeholder text dulu)
-        lbl_info = ctk.CTkLabel(row_frame, text="(Folder diambil dari langkah 1 diatas)", text_color="gray", font=("Arial", 10))
-        lbl_info.pack(side="left")
+        # Container untuk checkbox
+        check_container = ctk.CTkFrame(content_frame, fg_color="transparent")
+        check_container.pack(side="left", fill="x", expand=True)
         
         # Kita simpan referensi row ini
-        self.shortcut_rows.append({"key": entry_key, "frame": row_frame, "checks": []})
+        self.shortcut_rows.append({
+            "key": entry_key, 
+            "frame": content_frame, 
+            "check_container": check_container,
+            "checks": []
+        })
         
-        # Update checkbox berdasarkan folder yang ada saat ini
         self.refresh_shortcut_options()
 
     def refresh_shortcut_options(self):
-        # Update pilihan folder di setiap baris shortcut
+        """Update pilihan folder dengan desain modern"""
         current_folders = [e["name"].get() for e in self.folder_entries]
         
         for row in self.shortcut_rows:
             # Hapus checkbox lama
-            for widget in row["frame"].winfo_children():
-                if isinstance(widget, ctk.CTkCheckBox):
-                    widget.destroy()
+            for widget in row["check_container"].winfo_children():
+                widget.destroy()
             
             row["checks"] = []
-            for i, folder_name in enumerate(current_folders):
-                name_display = folder_name if folder_name else f"Folder {i+1}"
-                chk = ctk.CTkCheckBox(row["frame"], text=name_display, fg_color=NAVY_COLOR)
-                chk.pack(side="left", padx=5)
-                row["checks"].append(chk)
+            
+            if current_folders:
+                for i, folder_name in enumerate(current_folders):
+                    name_display = folder_name if folder_name else f"Folder {i+1}"
+                    
+                    chk = ctk.CTkCheckBox(
+                        row["check_container"], 
+                        text=name_display,
+                        fg_color=PRIMARY_COLOR,
+                        hover_color=PRIMARY_HOVER,
+                        corner_radius=6,
+                        font=("Inter", 11),
+                        text_color=TEXT_DARK,
+                        border_color=BORDER_COLOR
+                    )
+                    chk.pack(side="left", padx=8)
+                    row["checks"].append(chk)
+            else:
+                ctk.CTkLabel(
+                    row["check_container"], 
+                    text="(Belum ada folder tujuan)",
+                    text_color=TEXT_LIGHT,
+                    font=("Inter", 11, "italic")
+                ).pack(side="left")
 
     def select_source_folder(self):
         path = filedialog.askdirectory()
         if path:
             self.source_folder = path
-            self.lbl_source_path.configure(text=path)
+            self.lbl_source_path.configure(
+                text=f"📂  {path}", 
+                text_color=PRIMARY_COLOR,
+                font=("Inter", 12, "bold")
+            )
+            self.update_status(f"Folder sumber dipilih: {os.path.basename(path)}")
+
+    def update_status(self, message):
+        """Update status bar"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.status_bar.configure(text=f"[{timestamp}]  {message}")
 
     # ==========================================
     # LOGIKA START & VALIDASI
@@ -214,7 +516,6 @@ class SortirFotoApp(ctk.CTk):
             selected_indices = [i for i, chk in enumerate(row["checks"]) if chk.get() == 1]
             
             if key and selected_indices:
-                # Validasi index folder (jika user menghapus baris folder tp checkbox masih ada)
                 valid_indices = [i for i in selected_indices if i < len(self.folders_data)]
                 if valid_indices:
                     self.shortcuts_data.append({"key": key, "targets": valid_indices})
@@ -223,7 +524,7 @@ class SortirFotoApp(ctk.CTk):
             messagebox.showerror("Error", "Atur minimal 1 tombol shortcut!")
             return
 
-        # Masuk ke Halaman Sortir
+        self.update_status(f"Memulai sortir {len(self.image_files)} gambar...")
         self.init_sorting_page()
 
     # ==========================================
@@ -235,109 +536,226 @@ class SortirFotoApp(ctk.CTk):
         
         # Bind Keyboard Events
         self.bind("<Key>", self.handle_keypress)
+        self.focus_set()
 
-        # Layout Grid
-        self.main_scroll.grid_columnconfigure(0, weight=1)
+        # Header
+        self.create_header(
+            "Sortir Gambar", 
+            f"{len(self.image_files)} gambar ditemukan"
+        )
 
-        # 1. Area Gambar
-        self.image_label = ctk.CTkLabel(self.main_scroll, text="")
-        self.image_label.pack(pady=10, padx=10, expand=True)
-
-        # 2. Info File
-        self.file_info_label = ctk.CTkLabel(self.main_scroll, text="Nama File", font=("Roboto", 14))
-        self.file_info_label.pack(pady=5)
-
-        # 3. Kontrol Navigasi
-        nav_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
-        nav_frame.pack(pady=10)
+        # Main content grid
+        content_frame = ctk.CTkFrame(self.main_scroll, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True)
         
-        ctk.CTkButton(nav_frame, text="< Sebelumnya", command=self.prev_image, fg_color="gray").pack(side="left", padx=10)
-        ctk.CTkButton(nav_frame, text="Lewati / Selanjutnya >", command=self.next_image, fg_color="gray").pack(side="left", padx=10)
+        # Column configuration
+        content_frame.grid_columnconfigure(0, weight=1)
 
-        # 4. Panel Tombol Shortcut (Visual Guide)
-        shortcut_frame = ctk.CTkFrame(self.main_scroll, fg_color="#F0F0F0")
-        shortcut_frame.pack(fill="x", padx=20, pady=20)
+        # 1. Image Card
+        image_card = ModernCard(content_frame)
+        image_card.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         
-        ctk.CTkLabel(shortcut_frame, text="Shortcut Tersedia:", font=("Roboto", 14, "bold")).pack(pady=5)
+        # Image container
+        image_container = ctk.CTkFrame(image_card, fg_color=CARD_BG)
+        image_container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Buat grid tombol visual
-        grid_frame = ctk.CTkFrame(shortcut_frame, fg_color="transparent")
-        grid_frame.pack(pady=10)
+        self.image_label = ctk.CTkLabel(
+            image_container, 
+            text="",
+            font=("Inter", 14)
+        )
+        self.image_label.pack(expand=True)
+
+        # 2. File Info Card
+        info_card = ModernCard(content_frame)
+        info_card.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
         
-        for s_data in self.shortcuts_data:
+        info_container = ctk.CTkFrame(info_card, fg_color="transparent")
+        info_container.pack(fill="x", padx=20, pady=15)
+        
+        self.file_info_label = ctk.CTkLabel(
+            info_container, 
+            text="Memuat gambar...",
+            font=("Inter", 14, "bold"),
+            text_color=TEXT_DARK
+        )
+        self.file_info_label.pack()
+        
+        # Progress bar
+        self.progress_bar = ctk.CTkProgressBar(
+            info_container,
+            height=6,
+            corner_radius=3,
+            fg_color=BORDER_COLOR,
+            progress_color=PRIMARY_COLOR
+        )
+        self.progress_bar.pack(fill="x", pady=(10, 0))
+        self.progress_bar.set(0)
+
+        # 3. Navigation Card
+        nav_card = ModernCard(content_frame)
+        nav_card.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        
+        nav_container = ctk.CTkFrame(nav_card, fg_color="transparent")
+        nav_container.pack(padx=20, pady=15)
+        
+        btn_prev = ctk.CTkButton(
+            nav_container, 
+            text="◀  Sebelumnya", 
+            command=self.prev_image,
+            fg_color=SECONDARY_COLOR,
+            hover_color="#475569",
+            height=40,
+            width=150,
+            corner_radius=8,
+            font=("Inter", 12)
+        )
+        btn_prev.pack(side="left", padx=10)
+        
+        btn_next = ctk.CTkButton(
+            nav_container, 
+            text="Lewati  ▶", 
+            command=self.next_image,
+            fg_color=SECONDARY_COLOR,
+            hover_color="#475569",
+            height=40,
+            width=150,
+            corner_radius=8,
+            font=("Inter", 12)
+        )
+        btn_next.pack(side="left", padx=10)
+
+        # 4. Shortcut Panel
+        shortcut_panel = ModernCard(content_frame)
+        shortcut_panel.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        
+        panel_header = ctk.CTkFrame(shortcut_panel, fg_color="transparent")
+        panel_header.pack(fill="x", padx=20, pady=(20, 10))
+        
+        ctk.CTkLabel(
+            panel_header, 
+            text="⌨️  Shortcut Keyboard", 
+            font=("Inter", 16, "bold"),
+            text_color=TEXT_DARK
+        ).pack(side="left")
+        
+        # Grid untuk shortcut buttons
+        grid_frame = ctk.CTkFrame(shortcut_panel, fg_color="transparent")
+        grid_frame.pack(padx=20, pady=(0, 20))
+        
+        # Tombol shortcut dengan desain modern
+        for i, s_data in enumerate(self.shortcuts_data):
             key = s_data["key"].upper()
-            # Ambil nama folder target
             target_names = [self.folders_data[i]["name"] for i in s_data["targets"]]
-            desc = " & ".join(target_names)
+            desc = " & ".join(target_names[:2])
+            if len(target_names) > 2:
+                desc += f" +{len(target_names)-2} lainnya"
             
-            btn_text = f"[{key}]\nSimpan ke:\n{desc}"
+            btn_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
+            btn_frame.grid(row=i//3, column=i%3, padx=10, pady=10)
             
-            # Tombol ini juga bisa diklik selain ditekan di keyboard
-            btn = ctk.CTkButton(grid_frame, text=btn_text, 
-                                command=lambda k=s_data["key"]: self.execute_sort(k),
-                                width=150, height=60,
-                                fg_color=NAVY_COLOR, hover_color=NAVY_HOVER)
-            btn.pack(side="left", padx=10, pady=5)
+            btn = ctk.CTkButton(
+                btn_frame,
+                text=f"{key}",
+                font=("Inter", 20, "bold"),
+                width=70,
+                height=70,
+                corner_radius=12,
+                fg_color=PRIMARY_COLOR,
+                hover_color=PRIMARY_HOVER,
+                command=lambda k=s_data["key"]: self.execute_sort(k)
+            )
+            btn.pack()
+            
+            ctk.CTkLabel(
+                btn_frame,
+                text=f"→ {desc}",
+                font=("Inter", 11),
+                text_color=TEXT_LIGHT,
+                wraplength=150
+            ).pack(pady=(5, 0))
 
         self.load_image()
 
     def load_image(self):
+        """Memuat gambar dengan animasi progress"""
         if 0 <= self.current_image_index < len(self.image_files):
             file_name = self.image_files[self.current_image_index]
             file_path = os.path.join(self.source_folder, file_name)
             
+            # Update progress
+            progress = (self.current_image_index + 1) / len(self.image_files)
+            self.progress_bar.set(progress)
+            
             # Update Info
-            self.file_info_label.configure(text=f"[{self.current_image_index + 1}/{len(self.image_files)}] {file_name}")
+            self.file_info_label.configure(
+                text=f"[{self.current_image_index + 1}/{len(self.image_files)}]  {file_name}"
+            )
             
             # Load & Resize Image
             try:
                 img = Image.open(file_path)
                 
-                # Hitung rasio resize agar muat di layar tapi tidak pecah
-                # Max height 500px
-                aspect_ratio = img.width / img.height
-                new_height = 500
-                new_width = int(new_height * aspect_ratio)
+                # Hitung rasio resize
+                max_height = 500
+                max_width = 800
                 
-                my_image = ctk.CTkImage(light_image=img, dark_image=img, size=(new_width, new_height))
-                self.image_label.configure(image=my_image)
+                aspect_ratio = img.width / img.height
+                
+                if img.width > max_width or img.height > max_height:
+                    if aspect_ratio > 1:
+                        new_width = min(max_width, img.width)
+                        new_height = int(new_width / aspect_ratio)
+                    else:
+                        new_height = min(max_height, img.height)
+                        new_width = int(new_height * aspect_ratio)
+                else:
+                    new_width, new_height = img.width, img.height
+                
+                my_image = ctk.CTkImage(
+                    light_image=img, 
+                    dark_image=img, 
+                    size=(new_width, new_height)
+                )
+                self.image_label.configure(image=my_image, text="")
+                
             except Exception as e:
-                self.file_info_label.configure(text=f"Error loading image: {e}")
+                self.file_info_label.configure(
+                    text=f"Error loading image: {e}",
+                    text_color="#ef4444"
+                )
         else:
             self.end_session()
 
     def handle_keypress(self, event):
         key = event.char.lower()
-        # Cek apakah tombol yang ditekan ada di daftar shortcut
         for s in self.shortcuts_data:
             if s["key"] == key:
                 self.execute_sort(key)
                 break
                 
     def execute_sort(self, key):
-        # Cari konfigurasi shortcut
         shortcut = next((s for s in self.shortcuts_data if s["key"] == key), None)
         if not shortcut: return
 
         current_file = self.image_files[self.current_image_index]
         src_path = os.path.join(self.source_folder, current_file)
 
-        # Lakukan penyalinan ke SEMUA folder target
         success_list = []
         for target_idx in shortcut["targets"]:
             dest_folder_info = self.folders_data[target_idx]
             dest_path = dest_folder_info["path"]
             
             try:
-                shutil.copy2(src_path, dest_path) # copy2 menjaga metadata
+                shutil.copy2(src_path, dest_path)
                 success_list.append(dest_folder_info["name"])
             except Exception as e:
                 print(f"Gagal copy ke {dest_folder_info['name']}: {e}")
 
-        # Feedback visual sebentar (opsional, bisa ditambah toast message)
-        print(f"Berhasil simpan {current_file} ke: {', '.join(success_list)}")
+        # Feedback visual
+        if success_list:
+            self.update_status(f"✓ {current_file} → {', '.join(success_list)}")
         
-        # Slide otomatis (Requirement 5)
         self.next_image()
 
     def next_image(self):
@@ -353,8 +771,67 @@ class SortirFotoApp(ctk.CTk):
             self.load_image()
 
     def end_session(self):
-        self.image_label.configure(image=None, text="SELESAI!\nSemua foto telah disortir.")
-        self.unbind("<Key>") # Matikan keyboard shortcut
+        """Tampilkan halaman selesai dengan desain modern"""
+        self.clear_frame(self.main_scroll)
+        
+        # Card sukses
+        success_card = ModernCard(self.main_scroll)
+        success_card.pack(expand=True, padx=50, pady=50)
+        
+        # Icon sukses
+        icon_frame = ctk.CTkFrame(success_card, fg_color=SUCCESS_COLOR, corner_radius=50, width=80, height=80)
+        icon_frame.pack(pady=(40, 20))
+        icon_frame.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            icon_frame, 
+            text="✓", 
+            font=("Inter", 40, "bold"),
+            text_color="white"
+        ).pack(expand=True)
+        
+        ctk.CTkLabel(
+            success_card, 
+            text="Selesai!", 
+            font=("Inter", 32, "bold"),
+            text_color=TEXT_DARK
+        ).pack(pady=(10, 5))
+        
+        ctk.CTkLabel(
+            success_card, 
+            text="Semua foto telah disortir", 
+            font=("Inter", 16),
+            text_color=TEXT_LIGHT
+        ).pack(pady=(0, 30))
+        
+        # Ringkasan
+        summary_frame = ctk.CTkFrame(success_card, fg_color=CARD_BG, corner_radius=10)
+        summary_frame.pack(padx=40, pady=20, fill="x")
+        
+        total_images = len(self.image_files)
+        total_folders = len(self.folders_data)
+        
+        ctk.CTkLabel(
+            summary_frame,
+            text=f"📸 {total_images} gambar telah disortir ke {total_folders} folder",
+            font=("Inter", 14),
+            text_color=TEXT_DARK
+        ).pack(pady=15)
+        
+        btn_new = ctk.CTkButton(
+            success_card,
+            text="🔄  Mulai Sortir Baru",
+            command=self.init_config_page,
+            fg_color=PRIMARY_COLOR,
+            hover_color=PRIMARY_HOVER,
+            height=45,
+            width=200,
+            corner_radius=8,
+            font=("Inter", 14, "bold")
+        )
+        btn_new.pack(pady=30)
+        
+        self.unbind("<Key>")
 
     def clear_frame(self, frame):
         for widget in frame.winfo_children():
