@@ -48,4 +48,5 @@ python main.py
 
 4. **Completion**:
 * Once all images in the folder are processed, a summary screen will appear.
+<img width="1919" height="679" alt="image" src="https://github.com/user-attachments/assets/44661005-8dd5-4b0f-bf6e-c7daec5b37ca" />
 
